@@ -7,9 +7,9 @@ import os
 from analytics import (
     compute_roi, plot_timeseries, plot_bar_chart,
     top_customers, top_products, salesperson_performance, customer_segmentation,
-    sales_by_location
+    sales_by_location, forecast_product_demand
 )
-from agent import summarize_dataframe
+from agent import summarize_dataframe, forecast_with_llm
 import pandas as pd
 
 app = FastAPI(title='Sales Agent')
@@ -43,7 +43,7 @@ def api_roi(start_date: str = '2015-01-01', end_date: str = '2016-12-31'):
 
 @api_router.get('/roi-data')
 def api_roi_data(start_date: str = '2015-01-01', end_date: str = '2016-12-31'):
-    """Return ROI timeseries data for interactive charts."""
+    """Return ROI timeseries data with summary metrics for interactive charts."""
     try:
         df = compute_roi(start_date, end_date)
         if df.empty:
@@ -58,7 +58,22 @@ def api_roi_data(start_date: str = '2015-01-01', end_date: str = '2016-12-31'):
                 'gross_margin': float(row['gross_margin']),
                 'roi': float(row['roi']) if row['roi'] is not None else None
             })
-        return JSONResponse({'data': records})
+
+        revenue_sum = df['revenue'].sum()
+        gross_margin_sum = df['gross_margin'].sum()
+        gross_margin_pct = (gross_margin_sum / revenue_sum * 100) if revenue_sum else 0
+        roi_series = df['roi'].dropna()
+        roi_trend = 0
+        if len(roi_series) >= 2 and roi_series.iloc[0] != 0:
+            roi_trend = (roi_series.iloc[-1] - roi_series.iloc[0]) / abs(roi_series.iloc[0]) * 100
+
+        return JSONResponse({
+            'data': records,
+            'summary': {
+                'gross_margin_pct': gross_margin_pct,
+                'roi_trend_pct': roi_trend
+            }
+        })
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -73,8 +88,20 @@ async def api_ask(req: AskRequest):
     plot_timeseries(df, ['revenue', 'cogs', 'gross_margin'], 'Monthly Revenue / COGS / Gross Margin', plot_path)
 
     # Summarize via LLM
+    context_parts = []
     try:
-        summary = summarize_dataframe(df, req.question)
+        tc = top_customers(req.start_date, req.end_date, limit=5)
+        if not tc.empty:
+            context_parts.append("Top customers by revenue:\n" + ", ".join(f"{row.CustomerName} (${row.total_revenue:,.0f})" for _, row in tc.iterrows()))
+        tp = top_products(req.start_date, req.end_date, limit=5)
+        if not tp.empty:
+            context_parts.append("Top products:\n" + ", ".join(f"{row.StockItemName} ({row.total_units} units)" for _, row in tp.iterrows()))
+    except Exception:
+        pass
+    extra_context = "\\n\\n".join(context_parts) if context_parts else None
+
+    try:
+        summary = summarize_dataframe(df, req.question, context=extra_context)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -186,6 +213,41 @@ def api_geo_sales(start_date: str = '2015-01-01', end_date: str = '2016-12-31', 
             'start_date': start_date,
             'end_date': end_date
         })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get('/demand-forecast')
+def api_demand_forecast(stock_item_id: Optional[int] = None,
+                        months_ahead: int = 6,
+                        start_date: str = '2015-01-01',
+                        end_date: str = '2016-12-31'):
+    """Return demand forecast data for a product."""
+    try:
+        months_ahead = max(1, min(months_ahead, 12))
+        result = forecast_product_demand(stock_item_id, start_date, end_date, months_ahead)
+        history_for_llm = []
+        for row in result['history']:
+            month = row['month']
+            if hasattr(month, 'isoformat'):
+                month = month.date().isoformat()
+            history_for_llm.append({'month': month, 'units': row['units']})
+
+        try:
+            llm_output = forecast_with_llm(history_for_llm, months_ahead, result['stock_item']['name'])
+            result['forecast'] = [{'month': f['month'], 'units': f['units']} for f in llm_output.get('forecast', [])]
+            if llm_output.get('explanation'):
+                result['explanation'] = llm_output['explanation']
+        except Exception:
+            pass
+
+        for section in ('history', 'forecast'):
+            for row in result[section]:
+                if hasattr(row['month'], 'isoformat'):
+                    row['month'] = row['month'].date().isoformat()
+        return JSONResponse(result)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

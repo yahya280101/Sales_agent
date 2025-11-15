@@ -4,6 +4,7 @@ import pyodbc
 import plotly.express as px
 import plotly.io as pio
 from datetime import datetime
+import numpy as np
 
 pio.kaleido.scope.default_format = "png"
 
@@ -82,6 +83,7 @@ def compute_roi(start_date: str = '2023-01-01', end_date: str = None) -> pd.Data
     # define ROI as gross_margin / cogs (avoid divide by zero)
     df['roi'] = df.apply(lambda r: (r['gross_margin'] / r['cogs']) if r['cogs'] else None, axis=1)
     df = df.sort_values('month')
+    df = df.loc[(df['revenue'] != 0) | (df['cogs'] != 0) | (df['gross_margin'] != 0)]
     return df
 
 
@@ -236,6 +238,7 @@ def sales_by_location(start_date: str = '2023-01-01', end_date: str = None, limi
     JOIN [Application].[Countries] co ON co.CountryID = sp.CountryID
     JOIN [Sales].[InvoiceLines] il ON il.InvoiceID = i.InvoiceID
     WHERE i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+      AND co.CountryName IN ('United States', 'United States of America')
     GROUP BY ct.CityName, sp.StateProvinceName, co.CountryName
     ORDER BY total_revenue DESC
     """
@@ -259,3 +262,74 @@ def plot_bar_chart(df: pd.DataFrame, x: str, y: str, title: str, out_path: str, 
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
     pio.write_image(fig, out_path, scale=2, width=1400, height=800)
     return out_path
+
+
+def product_monthly_units(stock_item_id: int, start_date: str, end_date: str) -> pd.DataFrame:
+    """Get monthly units sold for a specific stock item."""
+    q = f"""
+    SELECT
+      DATEFROMPARTS(YEAR(i.InvoiceDate), MONTH(i.InvoiceDate), 1) AS [month],
+      si.StockItemID,
+      si.StockItemName,
+      SUM(il.Quantity) AS total_units
+    FROM [Sales].[InvoiceLines] il
+    JOIN [Sales].[Invoices] i ON i.InvoiceID = il.InvoiceID
+    JOIN [Warehouse].[StockItems] si ON si.StockItemID = il.StockItemID
+    WHERE il.StockItemID = {stock_item_id}
+      AND i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY DATEFROMPARTS(YEAR(i.InvoiceDate), MONTH(i.InvoiceDate), 1), si.StockItemID, si.StockItemName
+    ORDER BY [month]
+    """
+    return run_sql(q)
+
+
+def forecast_product_demand(stock_item_id: int = None, start_date: str = '2015-01-01',
+                            end_date: str = None, months_ahead: int = 6) -> dict:
+    """Forecast future product demand using simple linear trend."""
+    end_date = end_date or datetime.utcnow().strftime('%Y-%m-%d')
+
+    if not stock_item_id:
+        top = top_products(start_date, end_date, limit=1)
+        if top.empty:
+            raise RuntimeError('No products available for forecasting')
+        stock_item_id = int(top.iloc[0]['StockItemID'])
+
+    history_df = product_monthly_units(stock_item_id, start_date, end_date)
+    if history_df.empty:
+        raise RuntimeError('No historical data for selected product')
+
+    history_df['month'] = pd.to_datetime(history_df['month'])
+    history_df = history_df.sort_values('month')
+    stock_item_name = history_df.iloc[0]['StockItemName']
+
+    x = np.arange(len(history_df))
+    y = history_df['total_units'].values.astype(float)
+    if len(x) >= 2:
+        slope, intercept = np.polyfit(x, y, 1)
+    else:
+        slope, intercept = 0.0, y[0]
+
+    recent_window = min(6, len(history_df))
+    recent_avg = history_df['total_units'].tail(recent_window).mean()
+    min_floor = recent_avg * 0.6
+
+    last_month = history_df['month'].iloc[-1]
+    forecast = []
+    for step in range(1, months_ahead + 1):
+        future_month = (last_month + pd.offsets.MonthBegin(step)).normalize()
+        future_index = len(history_df) + (step - 1)
+        trend_value = slope * future_index + intercept
+        blended = 0.7 * trend_value + 0.3 * recent_avg
+        value = max(min_floor, blended)
+        forecast.append({'month': future_month, 'units': float(value)})
+
+    history = [{'month': row['month'], 'units': float(row['total_units'])} for _, row in history_df.iterrows()]
+
+    return {
+        'stock_item': {'id': int(stock_item_id), 'name': stock_item_name},
+        'history': history,
+        'forecast': forecast,
+        'start_date': start_date,
+        'end_date': end_date,
+        'explanation': 'Baseline linear trend forecast blended with recent performance.'
+    }

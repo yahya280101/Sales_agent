@@ -128,7 +128,8 @@
       color: rgba(226,232,240,0.9);
     }
     textarea,
-    input[type="date"] {
+    input[type="date"],
+    select {
       width: 100%;
       border: 1px solid rgba(255,255,255,0.12);
       border-radius: 20px;
@@ -141,7 +142,8 @@
       transition: border 0.2s ease, box-shadow 0.2s;
     }
     textarea:focus,
-    input[type="date"]:focus {
+    input[type="date"]:focus,
+    select:focus {
       border-color: rgba(139,92,246,0.9);
       box-shadow: 0 0 0 1px rgba(139,92,246,0.2);
     }
@@ -288,9 +290,21 @@
       box-shadow: 0 30px 60px rgba(0,0,0,0.6);
       padding: 32px;
     }
+    .forecast-section {
+      margin-top: 32px;
+      border-radius: 32px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(6,10,24,0.85);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+      padding: 32px;
+    }
     #geoMap {
       width: 100%;
       min-height: 420px;
+    }
+    #forecastChart {
+      width: 100%;
+      min-height: 360px;
     }
     .interactive-chart {
       width: 100%;
@@ -440,11 +454,11 @@
           <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:12px;">
             <div style="border-radius:18px; padding:16px; background:rgba(255,255,255,0.04); text-align:center;">
               <p style="margin:0; text-transform:uppercase; font-size:11px; letter-spacing:0.1em; color:rgba(148,163,184,0.9);">Gross Margin</p>
-              <p style="margin:6px 0 0; font-size:24px; font-weight:600;">38.6%</p>
+              <p id="grossMarginMetric" style="margin:6px 0 0; font-size:24px; font-weight:600;">--</p>
             </div>
             <div style="border-radius:18px; padding:16px; background:rgba(255,255,255,0.04); text-align:center;">
               <p style="margin:0; text-transform:uppercase; font-size:11px; letter-spacing:0.1em; color:rgba(148,163,184,0.9);">ROI Trend</p>
-              <p style="margin:6px 0 0; font-size:24px; font-weight:600;">+12.4%</p>
+              <p id="roiTrendMetric" style="margin:6px 0 0; font-size:24px; font-weight:600;">--</p>
             </div>
           </div>
           <div style="border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); position:relative; min-height:240px;">
@@ -514,6 +528,26 @@
       <div id="geoMapLoading" class="plot-loading" style="min-height:220px;"><span class="spinner"></span>Loading geographic data...</div>
       <div id="geoMap"></div>
     </section>
+
+    <section class="forecast-section">
+      <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:16px;">
+        <div>
+          <h3 style="margin:0; font-size:28px;">Demand Forecasts</h3>
+          <p id="forecastSubtitle" style="margin:6px 0 0; color:rgba(226,232,240,0.78);">Predict upcoming demand for top products.</p>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+          <select id="forecastProduct" style="min-width:220px;">
+            <option value="">Auto (Top Seller)</option>
+          </select>
+          <button id="refreshForecast" class="btn-primary" style="display:flex; align-items:center; gap:10px; padding:12px 22px;">
+            <i class="fas fa-chart-area"></i> Refresh Forecast
+          </button>
+        </div>
+      </div>
+      <div id="forecastChartLoading" class="plot-loading" style="min-height:220px;"><span class="spinner"></span>Building forecast...</div>
+      <div id="forecastChart" class="interactive-chart"></div>
+      <p id="forecastExplanation" style="margin-top:12px; color:rgba(226,232,240,0.75);"></p>
+    </section>
   </div>
 
   <div id="detailModal" class="modal-backdrop">
@@ -537,6 +571,8 @@
     const summaryLoadingEl = document.getElementById('summaryLoading');
     const roiChartEl = document.getElementById('roiChart');
     const roiChartLoadingEl = document.getElementById('roiChartLoading');
+    const grossMarginMetric = document.getElementById('grossMarginMetric');
+    const roiTrendMetric = document.getElementById('roiTrendMetric');
     const errorEl = document.getElementById('error');
     const refreshInsightsBtn = document.getElementById('refreshInsights');
     const refreshGeoBtn = document.getElementById('refreshGeo');
@@ -546,8 +582,15 @@
     const modalClose = document.getElementById('modalClose');
     const modalTitle = document.getElementById('modalTitle');
     const modalChart = document.getElementById('modalChart');
+    const forecastProductSelect = document.getElementById('forecastProduct');
+    const refreshForecastBtn = document.getElementById('refreshForecast');
+    const forecastChart = document.getElementById('forecastChart');
+    const forecastChartLoading = document.getElementById('forecastChartLoading');
+    const forecastSubtitle = document.getElementById('forecastSubtitle');
+    const forecastExplanation = document.getElementById('forecastExplanation');
 
     const insightStore = {};
+    let forecastInitialized = false;
 
     const quickInsights = [
       {
@@ -637,6 +680,24 @@
       return '$' + num.toLocaleString('en-US', { maximumFractionDigits: 0 });
     }
 
+    function populateForecastOptions() {
+      if (!forecastProductSelect) return;
+      const previous = forecastProductSelect.value;
+      forecastProductSelect.innerHTML = '<option value=\"\">Auto (Top Seller)</option>';
+      const store = insightStore['topProducts'];
+      if (store && store.payload && Array.isArray(store.payload.data)) {
+        store.payload.data.forEach(row => {
+          const option = document.createElement('option');
+          option.value = row.StockItemID;
+          option.textContent = `${row.StockItemName} (${row.StockItemID})`;
+          forecastProductSelect.appendChild(option);
+        });
+      }
+      if (previous && [...forecastProductSelect.options].some(opt => opt.value === previous)) {
+        forecastProductSelect.value = previous;
+      }
+    }
+
     async function loadRoiChart(startDate = startDateEl.value, endDate = endDateEl.value) {
       roiChartLoadingEl.style.display = 'flex';
       roiChartEl.innerHTML = '';
@@ -649,6 +710,13 @@
         }
         const payload = await res.json();
         const rows = payload.data || [];
+        const summary = payload.summary || {};
+        if (grossMarginMetric) grossMarginMetric.textContent = summary.gross_margin_pct !== undefined ? `${summary.gross_margin_pct.toFixed(1)}%` : '--';
+        if (roiTrendMetric) {
+          const trend = summary.roi_trend_pct || 0;
+          const sign = trend >= 0 ? '+' : '';
+          roiTrendMetric.textContent = `${sign}${trend.toFixed(1)}%`;
+        }
         if (!rows.length) {
           roiChartEl.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;">No ROI data</div>';
           return;
@@ -673,6 +741,83 @@
         roiChartEl.innerHTML = `<div style="text-align:center;color:#fecaca;padding:20px;">Error loading chart: ${err.message}</div>`;
       } finally {
         roiChartLoadingEl.style.display = 'none';
+      }
+    }
+
+    async function loadDemandForecast(stockItemId = forecastProductSelect?.value || '') {
+      if (!forecastChart || !forecastChartLoading) return;
+      forecastChartLoading.style.display = 'flex';
+      forecastChart.innerHTML = '';
+      if (forecastExplanation) forecastExplanation.textContent = '';
+      try {
+        const params = new URLSearchParams({
+          start_date: startDateEl.value,
+          end_date: endDateEl.value,
+          months_ahead: 6
+        });
+        if (stockItemId) params.append('stock_item_id', stockItemId);
+        const res = await fetch(`/api/demand-forecast?${params.toString()}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const payload = await res.json();
+        const history = payload.history || [];
+        const future = payload.forecast || [];
+        if (!history.length) {
+          forecastChart.innerHTML = '<div style=\"text-align:center;color:#94a3b8;padding:20px;\">No forecast data</div>';
+          return;
+        }
+        forecastSubtitle.textContent = `Predicting demand for ${payload.stock_item?.name || 'top product'}`;
+        if (forecastExplanation) {
+          forecastExplanation.textContent = payload.explanation || '';
+        }
+        const historyMonths = history.map(r => r.month);
+        const futureMonths = future.map(r => r.month);
+        const lastHistoryMonth = historyMonths[historyMonths.length - 1];
+        const lastHistoryValue = history[history.length - 1].units;
+        const traces = [
+          {
+            name: 'Actual',
+            x: historyMonths,
+            y: history.map(r => r.units),
+            mode: 'lines+markers',
+            line: { color: '#38bdf8', width: 3 },
+            marker: { size: 6 }
+          },
+          {
+            name: 'Forecast',
+            x: [lastHistoryMonth, ...futureMonths],
+            y: [lastHistoryValue, ...future.map(r => r.units)],
+            mode: 'lines+markers',
+            line: { color: '#f472b6', width: 3, dash: 'dash' },
+            marker: { size: 6 },
+            fill: 'tozeroy',
+            fillcolor: 'rgba(244,114,182,0.1)'
+          }
+        ];
+        const lastHistory = historyMonths[historyMonths.length - 1];
+        Plotly.newPlot(forecastChart, traces, {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          margin: { l: 60, r: 30, t: 10, b: 40 },
+          xaxis: { title: 'Month', gridcolor: 'rgba(148,163,184,0.2)' },
+          yaxis: { title: 'Units Sold', gridcolor: 'rgba(148,163,184,0.2)' },
+          font: { color: '#e5e7eb' },
+          hovermode: 'x unified',
+          shapes: lastHistory ? [{
+            type: 'line',
+            x0: lastHistory,
+            x1: lastHistory,
+            y0: 0,
+            y1: future.length ? Math.max(...future.map(f => f.units)) * 1.1 : Math.max(...history.map(h => h.units)),
+            line: { color: 'rgba(255,255,255,0.2)', dash: 'dot' }
+          }] : []
+        }, { displayModeBar: false, responsive: true });
+      } catch (err) {
+        forecastChart.innerHTML = `<div style=\"text-align:center;color:#fecaca;padding:20px;\">Error loading forecast: ${err.message}</div>`;
+      } finally {
+        forecastChartLoading.style.display = 'none';
       }
     }
 
@@ -768,6 +913,11 @@
       refreshInsightsBtn.disabled = true;
       await Promise.all(quickInsights.map(loadInsightCard));
       refreshInsightsBtn.disabled = false;
+      populateForecastOptions();
+      if (!forecastInitialized) {
+        await loadDemandForecast();
+        forecastInitialized = true;
+      }
     }
 
     async function loadGeoMap() {
@@ -806,11 +956,10 @@
             plot_bgcolor: 'rgba(0,0,0,0)',
             margin: { l:0, r:0, t:0, b:0 },
             geo: {
-              projection: { type: 'natural earth' },
+              scope: 'usa',
+              projection: { type: 'albers usa' },
               showland: true,
               landcolor: '#111827',
-              subunitcolor: '#374151',
-              countrycolor: '#374151',
               bgcolor: 'rgba(0,0,0,0)'
             }
           };
@@ -881,6 +1030,8 @@
     modalClose.addEventListener('click', closeDetailModal);
     detailModal.addEventListener('click', e => { if (e.target === detailModal) closeDetailModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetailModal(); });
+    if (refreshForecastBtn) refreshForecastBtn.addEventListener('click', () => loadDemandForecast());
+    if (forecastProductSelect) forecastProductSelect.addEventListener('change', () => loadDemandForecast());
 
     refreshInsightsBtn.addEventListener('click', loadQuickInsights);
     refreshGeoBtn.addEventListener('click', loadGeoMap);
