@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pandas
+pyodbc
+sqlalchemy
+plotly
+kaleido
+openai
+python-dotenv
+jinja2

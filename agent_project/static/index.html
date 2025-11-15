@@ -1,0 +1,459 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sales Analytics Agent</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      overflow: hidden;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    
+    .header p {
+      font-size: 1.1em;
+      opacity: 0.95;
+    }
+    
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      padding: 40px;
+      align-items: start;
+    }
+    
+    .panel {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 25px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .panel h2 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 1.3em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .panel h2 i { color: #667eea; }
+    
+    label {
+      display: block;
+      margin-top: 15px;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #333;
+      font-size: 0.95em;
+    }
+    
+    textarea {
+      width: 100%;
+      height: 110px;
+      padding: 12px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 1em;
+      resize: vertical;
+      transition: border-color 0.3s;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      background: white;
+    }
+    
+    .date-range {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    input[type="date"] {
+      padding: 10px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 0.95em;
+      transition: border-color 0.3s;
+    }
+    
+    input[type="date"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    
+    button {
+      padding: 14px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    #ask {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      grid-column: span 2;
+    }
+    
+    #ask:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+    
+    #showroi {
+      background: #f0f0f0;
+      color: #333;
+      border: 2px solid #e9ecef;
+    }
+    
+    #showroi:hover:not(:disabled) {
+      background: #e9ecef;
+      border-color: #667eea;
+    }
+    
+    button:disabled, #loading {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    
+    #loading {
+      background: #667eea;
+      color: white;
+    }
+    
+    .analysis-section {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+    }
+    
+    .analysis-panel {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 25px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .analysis-panel h3 {
+      color: #333;
+      margin-bottom: 15px;
+      font-size: 1.15em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .analysis-panel h3 i { color: #667eea; }
+    
+    #summary {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      min-height: 120px;
+      line-height: 1.6;
+      color: #333;
+      font-size: 0.95em;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      border: 1px solid #e9ecef;
+    }
+    
+    #plot {
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      background: white;
+      display: none;
+    }
+    
+    .plot-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 400px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+      color: #667eea;
+      font-size: 1.1em;
+    }
+    
+    .spinner {
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .error-message {
+      background: #fff5f5;
+      border-left: 4px solid #f56565;
+      color: #c53030;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+      display: none;
+    }
+    
+    @media (max-width: 1024px) {
+      .content {
+        grid-template-columns: 1fr;
+      }
+      
+      .analysis-section {
+        grid-template-columns: 1fr;
+      }
+      
+      .header h1 {
+        font-size: 2em;
+      }
+    }
+  </style>
+</head>
+<body>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><i class="fas fa-chart-line"></i> Sales Analytics Agent</h1>
+      <p>Intelligent real-time analysis of revenue, margins, and ROI</p>
+    </div>
+    
+    <div class="content">
+      <div class="panel">
+        <h2><i class="fas fa-question-circle"></i> Query</h2>
+        
+        <label>Your Question:</label>
+        <textarea id="question" placeholder="Ask about trends, margins, anomalies, seasonality, etc.">What are the revenue and margin trends?</textarea>
+        
+        <label>Date Range:</label>
+        <div class="date-range">
+          <div>
+            <input type="date" id="startDate" value="2015-01-01" />
+          </div>
+          <div>
+            <input type="date" id="endDate" value="2016-12-31" />
+          </div>
+        </div>
+        
+        <div class="button-group">
+          <button id="ask"><i class="fas fa-robot"></i> Ask Agent</button>
+          <button id="showroi"><i class="fas fa-chart-bar"></i> Plot Only</button>
+          <button id="loading" style="display: none;"><span class="spinner"></span> Analyzing...</button>
+        </div>
+        
+        <div class="error-message" id="error"></div>
+      </div>
+      
+      <div class="panel">
+        <h2><i class="fas fa-info-circle"></i> Info</h2>
+        <div style="color: #666; line-height: 1.8; font-size: 0.95em;">
+          <p><strong>📊 Data Coverage:</strong></p>
+          <p style="margin: 10px 0;">18 months of real sales data (Jan 2015 - Jun 2016)</p>
+          
+          <p style="margin-top: 20px;"><strong>🔍 Analysis Includes:</strong></p>
+          <ul style="margin: 10px 0; margin-left: 20px;">
+            <li>Monthly revenue trends</li>
+            <li>Cost of goods sold (COGS)</li>
+            <li>Gross margin calculations</li>
+            <li>ROI (Return on Investment)</li>
+            <li>Trend detection & anomalies</li>
+          </ul>
+          
+          <p style="margin-top: 20px;"><strong>🤖 LLM-Powered:</strong></p>
+          <p style="margin: 10px 0;">OpenAI GPT-4 provides intelligent summaries and insights</p>
+        </div>
+      </div>
+      
+      <div class="analysis-section">
+        <div class="analysis-panel">
+          <h3><i class="fas fa-lightbulb"></i> Analysis</h3>
+          <div id="summary" style="display: none;">Click "Ask Agent" to get analysis</div>
+          <div id="summaryLoading" class="plot-loading" style="height: 120px; display: none;">
+            <span class="spinner"></span> Processing...
+          </div>
+        </div>
+        
+        <div class="analysis-panel">
+          <h3><i class="fas fa-image"></i> Visualization</h3>
+          <div id="plotContainer" style="position: relative;">
+            <img id="plot" alt="ROI Chart" />
+            <div id="plotLoading" class="plot-loading" style="display: none;">
+              <span class="spinner"></span> Generating chart...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    const questionEl = document.getElementById('question');
+    const startDateEl = document.getElementById('startDate');
+    const endDateEl = document.getElementById('endDate');
+    const askBtn = document.getElementById('ask');
+    const loadingBtn = document.getElementById('loading');
+    const showroiBtn = document.getElementById('showroi');
+    const summaryEl = document.getElementById('summary');
+    const summaryLoadingEl = document.getElementById('summaryLoading');
+    const plotEl = document.getElementById('plot');
+    const plotLoadingEl = document.getElementById('plotLoading');
+    const errorEl = document.getElementById('error');
+    
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.style.display = 'block';
+      setTimeout(() => { errorEl.style.display = 'none'; }, 5000);
+    }
+    
+    function hideError() {
+      errorEl.style.display = 'none';
+    }
+    
+    askBtn.onclick = async () => {
+      hideError();
+      const q = questionEl.value.trim();
+      if (!q) {
+        showError('Please enter a question');
+        return;
+      }
+      
+      const startDate = startDateEl.value;
+      const endDate = endDateEl.value;
+      
+      askBtn.style.display = 'none';
+      showroiBtn.style.display = 'none';
+      loadingBtn.style.display = 'flex';
+      
+      summaryLoadingEl.style.display = 'flex';
+      summaryEl.style.display = 'none';
+      plotLoadingEl.style.display = 'flex';
+      plotEl.style.display = 'none';
+      
+      try {
+        // Fetch analysis
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            question: q,
+            start_date: startDate,
+            end_date: endDate
+          })
+        });
+        
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || `HTTP ${res.status}`);
+        }
+        
+        const data = await res.json();
+        
+        // Show summary immediately
+        summaryLoadingEl.style.display = 'none';
+        summaryEl.textContent = data.summary;
+        summaryEl.style.display = 'block';
+        
+        // Load plot
+        plotLoadingEl.style.display = 'flex';
+        plotEl.src = '/api/roi?start_date=' + startDate + '&end_date=' + endDate + '&ts=' + Date.now();
+        plotEl.onload = () => {
+          plotLoadingEl.style.display = 'none';
+          plotEl.style.display = 'block';
+        };
+        plotEl.onerror = () => {
+          plotLoadingEl.style.display = 'none';
+          showError('Failed to load chart');
+        };
+        
+      } catch (err) {
+        summaryLoadingEl.style.display = 'none';
+        plotLoadingEl.style.display = 'none';
+        showError('Error: ' + err.message);
+      } finally {
+        loadingBtn.style.display = 'none';
+        askBtn.style.display = 'flex';
+        showroiBtn.style.display = 'block';
+      }
+    };
+    
+    showroiBtn.onclick = () => {
+      hideError();
+      const startDate = startDateEl.value;
+      const endDate = endDateEl.value;
+      
+      plotLoadingEl.style.display = 'flex';
+      plotEl.style.display = 'none';
+      
+      plotEl.src = '/api/roi?start_date=' + startDate + '&end_date=' + endDate + '&ts=' + Date.now();
+      plotEl.onload = () => {
+        plotLoadingEl.style.display = 'none';
+        plotEl.style.display = 'block';
+      };
+      plotEl.onerror = () => {
+        plotLoadingEl.style.display = 'none';
+        showError('Failed to load chart');
+      };
+    };
+  </script>
+</body>
+</html>
+</body>
+</html>
