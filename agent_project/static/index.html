@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sales Analytics Agent</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -252,6 +253,131 @@
       margin-top: 10px;
       display: none;
     }
+
+    .insights-wrapper {
+      grid-column: 1 / -1;
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 30px;
+      border: 1px solid #e9ecef;
+    }
+
+    .insights-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .insights-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .insight-card {
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #e0e3eb;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 260px;
+    }
+
+    .insight-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .insight-card-header h3 {
+      margin: 0;
+      font-size: 1.1em;
+      color: #2d3748;
+    }
+
+    .insight-status {
+      font-size: 0.85em;
+      color: #718096;
+    }
+
+    .insight-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      flex: 1;
+    }
+
+    .insight-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 0.95em;
+      border-bottom: 1px dashed #edf2f7;
+    }
+
+    .insight-list li:last-child {
+      border-bottom: none;
+    }
+
+    .insight-list .label {
+      color: #2d3748;
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .insight-list .value {
+      color: #4a5568;
+      font-weight: 600;
+    }
+
+    .insight-plot {
+      width: 100%;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .insight-refresh {
+      padding: 10px 20px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .insight-refresh:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .map-wrapper {
+      margin-top: 30px;
+      grid-column: 1 / -1;
+    }
+
+    #geoMap {
+      width: 100%;
+      min-height: 480px;
+    }
+
+    #geoMapLoading {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 200px;
+      color: #667eea;
+      font-weight: 600;
+    }
     
     @media (max-width: 1024px) {
       .content {
@@ -268,7 +394,6 @@
     }
   </style>
 </head>
-<body>
 <body>
   <div class="container">
     <div class="header">
@@ -341,6 +466,75 @@
           </div>
         </div>
       </div>
+
+      <div class="insights-wrapper">
+        <div class="insights-header">
+          <div>
+            <h2 style="color:#2d3748; font-size:1.4em;">Quick Win Dashboards</h2>
+            <p style="color:#718096; margin-top:6px;">Top customers, products, salespeople, and customer segments for the selected date range.</p>
+          </div>
+          <button id="refreshInsights" class="insight-refresh"><i class="fas fa-sync"></i> Refresh Insights</button>
+        </div>
+        <div class="insights-grid">
+          <div class="insight-card">
+            <div class="insight-card-header">
+              <h3><i class="fas fa-users" style="color:#667eea;"></i> Top Customers</h3>
+              <span class="insight-status" id="topCustomersStatus">Idle</span>
+            </div>
+            <ul class="insight-list" id="topCustomersList">
+              <li>Click refresh to load data</li>
+            </ul>
+            <img id="topCustomersPlot" class="insight-plot" alt="Top customers chart" />
+          </div>
+
+          <div class="insight-card">
+            <div class="insight-card-header">
+              <h3><i class="fas fa-boxes" style="color:#667eea;"></i> Top Products</h3>
+              <span class="insight-status" id="topProductsStatus">Idle</span>
+            </div>
+            <ul class="insight-list" id="topProductsList">
+              <li>Click refresh to load data</li>
+            </ul>
+            <img id="topProductsPlot" class="insight-plot" alt="Top products chart" />
+          </div>
+
+          <div class="insight-card">
+            <div class="insight-card-header">
+              <h3><i class="fas fa-id-badge" style="color:#667eea;"></i> Salesperson Leaders</h3>
+              <span class="insight-status" id="salespeopleStatus">Idle</span>
+            </div>
+            <ul class="insight-list" id="salespeopleList">
+              <li>Click refresh to load data</li>
+            </ul>
+            <img id="salespeoplePlot" class="insight-plot" alt="Salesperson chart" />
+          </div>
+
+          <div class="insight-card">
+            <div class="insight-card-header">
+              <h3><i class="fas fa-layer-group" style="color:#667eea;"></i> Customer Segments</h3>
+              <span class="insight-status" id="segmentsStatus">Idle</span>
+            </div>
+            <ul class="insight-list" id="segmentsList">
+              <li>Click refresh to load data</li>
+            </ul>
+            <img id="segmentsPlot" class="insight-plot" alt="Customer segments chart" />
+          </div>
+        </div>
+      </div>
+      
+      <div class="insights-wrapper map-wrapper">
+        <div class="insights-header">
+          <div>
+            <h2 style="color:#2d3748; font-size:1.4em;">Global Sales Heatmap</h2>
+            <p style="color:#718096; margin-top:6px;">Visualize where customers are spending the most.</p>
+          </div>
+          <button id="refreshGeo" class="insight-refresh"><i class="fas fa-globe"></i> Refresh Map</button>
+        </div>
+        <div id="geoMapLoading" class="plot-loading" style="display:none;">
+          <span class="spinner"></span> Loading geographic data...
+        </div>
+        <div id="geoMap"></div>
+      </div>
     </div>
   </div>
   
@@ -356,6 +550,78 @@
     const plotEl = document.getElementById('plot');
     const plotLoadingEl = document.getElementById('plotLoading');
     const errorEl = document.getElementById('error');
+    const refreshInsightsBtn = document.getElementById('refreshInsights');
+    const refreshGeoBtn = document.getElementById('refreshGeo');
+    const geoMapEl = document.getElementById('geoMap');
+    const geoMapLoadingEl = document.getElementById('geoMapLoading');
+    const quickInsights = [
+      {
+        name: 'Top Customers',
+        endpoint: '/api/top-customers',
+        listEl: document.getElementById('topCustomersList'),
+        statusEl: document.getElementById('topCustomersStatus'),
+        plotEl: document.getElementById('topCustomersPlot'),
+        formatter: (payload) => {
+          const rows = (payload.data || []).slice(0, 5);
+          if (!rows.length) return ['No customers found for range'];
+          return rows.map((row, idx) => ({
+            label: `${idx + 1}. ${row.CustomerName}`,
+            value: currency(row.total_revenue)
+          }));
+        }
+      },
+      {
+        name: 'Top Products',
+        endpoint: '/api/top-products',
+        listEl: document.getElementById('topProductsList'),
+        statusEl: document.getElementById('topProductsStatus'),
+        plotEl: document.getElementById('topProductsPlot'),
+        formatter: (payload) => {
+          const rows = (payload.data || []).slice(0, 5);
+          if (!rows.length) return ['No products found for range'];
+          return rows.map((row, idx) => ({
+            label: `${idx + 1}. ${row.StockItemName}`,
+            value: `${currency(row.total_revenue)} • ${row.total_units} units`
+          }));
+        }
+      },
+      {
+        name: 'Salespeople',
+        endpoint: '/api/salesperson-performance',
+        listEl: document.getElementById('salespeopleList'),
+        statusEl: document.getElementById('salespeopleStatus'),
+        plotEl: document.getElementById('salespeoplePlot'),
+        formatter: (payload) => {
+          const rows = (payload.data || []).slice(0, 5);
+          if (!rows.length) return ['No salesperson data'];
+          return rows.map((row, idx) => ({
+            label: `${idx + 1}. ${row.salesperson || 'Unknown'}`,
+            value: `${currency(row.total_revenue)} • ${Number(row.profit_margin_pct || 0).toFixed(1)}% margin`
+          }));
+        }
+      },
+      {
+        name: 'Customer Segments',
+        endpoint: '/api/customer-segmentation',
+        listEl: document.getElementById('segmentsList'),
+        statusEl: document.getElementById('segmentsStatus'),
+        plotEl: document.getElementById('segmentsPlot'),
+        formatter: (payload) => {
+          const summary = payload.summary || {};
+          const segments = payload.data || {};
+          const entries = Object.entries(summary.segments || {});
+          if (!entries.length) return ['No segments found'];
+          return entries.sort((a, b) => b[1] - a[1]).map(([segment, count]) => {
+            const top = (segments[segment] || [])[0];
+            const topText = top ? `Top: ${top.CustomerName} (${currency(top.total_spent)})` : '';
+            return {
+              label: `${segment} (${count})`,
+              value: topText
+            };
+          });
+        }
+      }
+    ];
     
     function showError(msg) {
       errorEl.textContent = msg;
@@ -452,8 +718,124 @@
         showError('Failed to load chart');
       };
     };
+
+    function currency(value) {
+      const num = Number(value || 0);
+      return '$' + num.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+    }
+
+    function renderInsightList(el, items) {
+      if (Array.isArray(items)) {
+        el.innerHTML = items.map(item => {
+          if (typeof item === 'string') {
+            return `<li>${item}</li>`;
+          }
+          return `<li><span class="label">${item.label}</span><span class="value">${item.value}</span></li>`;
+        }).join('');
+      } else {
+        el.innerHTML = '<li>No data</li>';
+      }
+    }
+
+    async function loadInsightCard(config) {
+      config.statusEl.textContent = 'Loading...';
+      renderInsightList(config.listEl, ['Loading...']);
+      config.plotEl.style.display = 'none';
+      const params = new URLSearchParams({
+        start_date: startDateEl.value,
+        end_date: endDateEl.value
+      });
+      try {
+        const res = await fetch(`${config.endpoint}?${params.toString()}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        const items = config.formatter(data);
+        renderInsightList(config.listEl, items);
+        if (data.plot && config.plotEl) {
+          config.plotEl.src = `${data.plot}?ts=${Date.now()}`;
+          config.plotEl.style.display = 'block';
+        }
+        config.statusEl.textContent = 'Updated';
+      } catch (err) {
+        renderInsightList(config.listEl, [`Error: ${err.message}`]);
+        config.plotEl.style.display = 'none';
+        config.statusEl.textContent = 'Error';
+      }
+    }
+
+    async function loadQuickInsights() {
+      refreshInsightsBtn.disabled = true;
+      await Promise.all(quickInsights.map(loadInsightCard));
+      refreshInsightsBtn.disabled = false;
+    }
+
+    
+    async function loadGeoMap() {
+      refreshGeoBtn.disabled = true;
+      geoMapLoadingEl.style.display = 'flex';
+      const params = new URLSearchParams({
+        start_date: startDateEl.value,
+        end_date: endDateEl.value,
+        limit: 200
+      });
+      try {
+        const res = await fetch(`/api/geo-sales?${params.toString()}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const payload = await res.json();
+        const points = (payload.data || []).filter(p => p.latitude !== null && p.longitude !== null);
+        if (!points.length) {
+          geoMapEl.innerHTML = '<div style="text-align:center;padding:40px;color:#718096;">No geographic data available.</div>';
+        } else {
+          const sizes = points.map(p => Math.max(8, Math.sqrt(p.total_revenue) / 200));
+          const trace = {
+            type: 'scattergeo',
+            mode: 'markers',
+            lon: points.map(p => p.longitude),
+            lat: points.map(p => p.latitude),
+            text: points.map(p => `${p.CityName}, ${p.CountryName}<br>Revenue: ${currency(p.total_revenue)}`),
+            marker: {
+              size: sizes,
+              color: points.map(p => p.total_revenue),
+              colorscale: 'Viridis',
+              cmin: Math.min(...points.map(p => p.total_revenue)),
+              cmax: Math.max(...points.map(p => p.total_revenue)),
+              colorbar: { title: 'Revenue' },
+              opacity: 0.8
+            },
+            hovertemplate: '%{text}<extra></extra>'
+          };
+          const layout = {
+            margin: {l:0, r:0, t:0, b:0},
+            geo: {
+              projection: {type: 'natural earth'},
+              showland: true,
+              landcolor: '#f4f4f4',
+              subunitcolor: '#d3d3d3',
+              countrycolor: '#d3d3d3'
+            }
+          };
+          Plotly.newPlot(geoMapEl, [trace], layout, {displayModeBar: false});
+        }
+      } catch (err) {
+        geoMapEl.innerHTML = `<div style="text-align:center;padding:40px;color:#c53030;">Error loading map: ${err.message}</div>`;
+      } finally {
+        geoMapLoadingEl.style.display = 'none';
+        refreshGeoBtn.disabled = false;
+      }
+    }
+
+    refreshInsightsBtn.addEventListener('click', loadQuickInsights);
+    refreshGeoBtn.addEventListener('click', loadGeoMap);
+    window.addEventListener('load', () => {
+      loadQuickInsights();
+      loadGeoMap();
+    });
   </script>
-</body>
-</html>
 </body>
 </html>

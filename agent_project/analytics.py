@@ -114,3 +114,148 @@ def plot_timeseries(df: pd.DataFrame, y_cols: list, title: str, out_path: str):
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
     pio.write_image(fig, out_path, scale=2, width=1400, height=800)
     return out_path
+
+
+# =======================
+# New Analytics Features
+# =======================
+
+def top_customers(start_date: str = '2023-01-01', end_date: str = None, limit: int = 10) -> pd.DataFrame:
+    """Get top customers by total revenue."""
+    end_date = end_date or datetime.utcnow().strftime('%Y-%m-%d')
+    q = f"""
+    SELECT TOP {limit}
+      c.CustomerID, c.CustomerName,
+      SUM(il.ExtendedPrice) as total_revenue,
+      COUNT(DISTINCT i.InvoiceID) as order_count,
+      ROUND(AVG(il.ExtendedPrice), 2) as avg_order_value,
+      ROUND(SUM(il.LineProfit), 2) as total_profit
+    FROM [Sales].[Customers] c
+    JOIN [Sales].[Invoices] i ON c.CustomerID = i.CustomerID
+    JOIN [Sales].[InvoiceLines] il ON i.InvoiceID = il.InvoiceID
+    WHERE i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY c.CustomerID, c.CustomerName
+    ORDER BY total_revenue DESC
+    """
+    return run_sql(q)
+
+
+def top_products(start_date: str = '2023-01-01', end_date: str = None, limit: int = 10) -> pd.DataFrame:
+    """Get top products by units sold."""
+    end_date = end_date or datetime.utcnow().strftime('%Y-%m-%d')
+    q = f"""
+    SELECT TOP {limit}
+      si.StockItemID, si.StockItemName, si.Brand,
+      SUM(il.Quantity) as total_units,
+      ROUND(SUM(il.ExtendedPrice), 2) as total_revenue,
+      ROUND(SUM(il.LineProfit), 2) as total_profit,
+      ROUND(SUM(il.LineProfit) / NULLIF(SUM(il.ExtendedPrice), 0) * 100, 2) as profit_margin_pct
+    FROM [Warehouse].[StockItems] si
+    JOIN [Sales].[InvoiceLines] il ON si.StockItemID = il.StockItemID
+    JOIN [Sales].[Invoices] i ON i.InvoiceID = il.InvoiceID
+    WHERE i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY si.StockItemID, si.StockItemName, si.Brand
+    ORDER BY total_units DESC
+    """
+    return run_sql(q)
+
+
+def salesperson_performance(start_date: str = '2023-01-01', end_date: str = None) -> pd.DataFrame:
+    """Get salesperson performance metrics."""
+    end_date = end_date or datetime.utcnow().strftime('%Y-%m-%d')
+    q = f"""
+    SELECT
+      COALESCE(p.FullName, 'Unknown') as salesperson,
+      COUNT(DISTINCT i.InvoiceID) as total_invoices,
+      ROUND(SUM(il.ExtendedPrice), 2) as total_revenue,
+      ROUND(SUM(il.LineProfit), 2) as total_profit,
+      ROUND(AVG(il.ExtendedPrice), 2) as avg_line_value,
+      ROUND(SUM(il.LineProfit) / NULLIF(SUM(il.ExtendedPrice), 0) * 100, 2) as profit_margin_pct
+    FROM [Sales].[Invoices] i
+    JOIN [Sales].[InvoiceLines] il ON i.InvoiceID = il.InvoiceID
+    LEFT JOIN [Application].[People] p ON i.SalespersonPersonID = p.PersonID
+    WHERE i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY p.PersonID, p.FullName
+    ORDER BY total_revenue DESC
+    """
+    return run_sql(q)
+
+
+def customer_segmentation(start_date: str = '2023-01-01', end_date: str = None) -> pd.DataFrame:
+    """Segment customers by purchase value and frequency."""
+    end_date = end_date or datetime.utcnow().strftime('%Y-%m-%d')
+    q = f"""
+    WITH customer_stats AS (
+      SELECT
+        c.CustomerID,
+        c.CustomerName,
+        SUM(il.ExtendedPrice) as total_spent,
+        COUNT(DISTINCT i.InvoiceID) as purchase_count,
+        AVG(il.ExtendedPrice) as avg_order_value
+      FROM [Sales].[Customers] c
+      JOIN [Sales].[Invoices] i ON c.CustomerID = i.CustomerID
+      JOIN [Sales].[InvoiceLines] il ON i.InvoiceID = il.InvoiceID
+      WHERE i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+      GROUP BY c.CustomerID, c.CustomerName
+    )
+    SELECT
+      CustomerID,
+      CustomerName,
+      total_spent,
+      purchase_count,
+      ROUND(avg_order_value, 2) as avg_order_value,
+      CASE
+        WHEN total_spent > 500000 AND purchase_count > 50 THEN 'VIP'
+        WHEN total_spent > 250000 AND purchase_count > 25 THEN 'High Value'
+        WHEN total_spent > 50000 THEN 'Regular'
+        ELSE 'At Risk'
+      END as segment
+    FROM customer_stats
+    ORDER BY total_spent DESC
+    """
+    return run_sql(q)
+
+
+def sales_by_location(start_date: str = '2023-01-01', end_date: str = None, limit: int = 100) -> pd.DataFrame:
+    """Aggregate revenue by customer delivery city/state/country with lat/long if available."""
+    end_date = end_date or datetime.utcnow().strftime('%Y-%m-%d')
+    q = f"""
+    SELECT TOP {limit}
+      ct.CityName,
+      sp.StateProvinceName,
+      co.CountryName,
+      SUM(il.ExtendedPrice) AS total_revenue,
+      COUNT(DISTINCT i.InvoiceID) AS invoice_count,
+      COUNT(DISTINCT i.CustomerID) AS unique_customers,
+      AVG(CASE WHEN ct.Location IS NOT NULL THEN ct.Location.Lat ELSE NULL END) AS latitude,
+      AVG(CASE WHEN ct.Location IS NOT NULL THEN ct.Location.Long ELSE NULL END) AS longitude
+    FROM [Sales].[Invoices] i
+    JOIN [Sales].[Customers] c ON c.CustomerID = i.CustomerID
+    JOIN [Application].[Cities] ct ON ct.CityID = c.DeliveryCityID
+    JOIN [Application].[StateProvinces] sp ON sp.StateProvinceID = ct.StateProvinceID
+    JOIN [Application].[Countries] co ON co.CountryID = sp.CountryID
+    JOIN [Sales].[InvoiceLines] il ON il.InvoiceID = i.InvoiceID
+    WHERE i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY ct.CityName, sp.StateProvinceName, co.CountryName
+    ORDER BY total_revenue DESC
+    """
+    return run_sql(q)
+
+
+def plot_bar_chart(df: pd.DataFrame, x: str, y: str, title: str, out_path: str, color: str = None):
+    """Create a bar chart and export as PNG."""
+    if df.empty:
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        fig.add_annotation(text="No data available", xref="paper", yref="paper",
+                          x=0.5, y=0.5, showarrow=False, font=dict(size=20))
+        fig.update_layout(title=title)
+    else:
+        fig = px.bar(df, x=x, y=y, title=title, color=color or x,
+                    labels={x: x.replace('_', ' ').title(), y: y.replace('_', ' ').title()},
+                    template='plotly_white')
+        fig.update_layout(height=600, showlegend=False)
+    
+    os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
+    pio.write_image(fig, out_path, scale=2, width=1400, height=800)
+    return out_path
