@@ -1,543 +1,531 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Sales Analytics Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
+    :root {
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #050714;
+      color: #f5f6fb;
       min-height: 100vh;
-      padding: 20px;
+      overflow-x: hidden;
     }
-    
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    .bg-blobs::before,
+    .bg-blobs::after {
+      content: "";
+      position: absolute;
+      width: 480px;
+      height: 480px;
+      filter: blur(180px);
+      opacity: 0.6;
+      z-index: 0;
+    }
+    .bg-blobs::before {
+      top: -120px;
+      left: -120px;
+      background: radial-gradient(circle at center, rgba(167, 139, 250, 0.65), transparent 70%);
+      animation: float 12s ease-in-out infinite;
+    }
+    .bg-blobs::after {
+      bottom: -160px;
+      right: -80px;
+      background: radial-gradient(circle at center, rgba(14, 165, 233, 0.6), transparent 70%);
+      animation: float 14s ease-in-out infinite reverse;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(40px); }
+    }
+    .page {
+      position: relative;
+      z-index: 1;
+      padding: 40px clamp(16px, 4vw, 72px) 80px;
+    }
+    .hero {
+      border-radius: 32px;
+      padding: clamp(32px, 4vw, 72px);
+      margin-bottom: 40px;
+      position: relative;
       overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: linear-gradient(120deg, rgba(109,40,217,0.35), rgba(59,130,246,0.38));
+      box-shadow: 0 30px 80px rgba(15,23,42,0.5);
+      backdrop-filter: blur(18px);
     }
-    
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 40px;
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top left, rgba(255,255,255,0.2), transparent 55%);
+      mix-blend-mode: screen;
+      pointer-events: none;
+      animation: shimmer 10s linear infinite;
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-50%) translateY(-30%); }
+      100% { transform: translateX(50%) translateY(30%); }
+    }
+    .hero-content {
+      position: relative;
+      z-index: 1;
       text-align: center;
     }
-    
-    .header h1 {
-      font-size: 2.5em;
-      margin-bottom: 10px;
-      font-weight: 700;
+    .hero-icon {
+      font-size: clamp(32px, 6vw, 56px);
+      margin-bottom: 12px;
+      color: rgba(255,255,255,0.9);
     }
-    
-    .header p {
-      font-size: 1.1em;
-      opacity: 0.95;
+    .hero h1 {
+      font-size: clamp(32px, 6vw, 56px);
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: -0.02em;
     }
-    
-    .content {
+    .hero p {
+      margin: 12px auto 0;
+      max-width: 620px;
+      font-size: 18px;
+      color: rgba(235,238,255,0.85);
+    }
+    .grid-two {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-      padding: 40px;
-      align-items: start;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
     }
-    
-    .panel {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 25px;
-      border: 1px solid #e9ecef;
+    .card {
+      border-radius: 28px;
+      background: rgba(15,23,42,0.55);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 20px 50px rgba(2,6,23,0.45);
+      backdrop-filter: blur(18px);
+      padding: 24px;
     }
-    
-    .panel h2 {
-      color: #333;
-      margin-bottom: 20px;
-      font-size: 1.3em;
+    .card h2 {
+      margin: 0;
+      font-size: 22px;
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    
-    .panel h2 i { color: #667eea; }
-    
     label {
       display: block;
-      margin-top: 15px;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: #333;
-      font-size: 0.95em;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 12px;
+      color: rgba(226,232,240,0.9);
     }
-    
-    textarea {
-      width: 100%;
-      height: 110px;
-      padding: 12px;
-      border: 2px solid #e9ecef;
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 1em;
-      resize: vertical;
-      transition: border-color 0.3s;
-    }
-    
-    textarea:focus {
-      outline: none;
-      border-color: #667eea;
-      background: white;
-    }
-    
-    .date-range {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-      margin-top: 15px;
-    }
-    
+    textarea,
     input[type="date"] {
-      padding: 10px;
-      border: 2px solid #e9ecef;
-      border-radius: 8px;
-      font-size: 0.95em;
-      transition: border-color 0.3s;
-    }
-    
-    input[type="date"]:focus {
-      outline: none;
-      border-color: #667eea;
-    }
-    
-    .button-group {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin-top: 20px;
-    }
-    
-    button {
-      padding: 14px 24px;
-      border: none;
-      border-radius: 8px;
-      font-size: 1em;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-    
-    #ask {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      grid-column: span 2;
-    }
-    
-    #ask:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-    }
-    
-    #showroi {
-      background: #f0f0f0;
-      color: #333;
-      border: 2px solid #e9ecef;
-    }
-    
-    #showroi:hover:not(:disabled) {
-      background: #e9ecef;
-      border-color: #667eea;
-    }
-    
-    button:disabled, #loading {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-    
-    #loading {
-      background: #667eea;
-      color: white;
-    }
-    
-    .analysis-section {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 30px;
-    }
-    
-    .analysis-panel {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 25px;
-      border: 1px solid #e9ecef;
-    }
-    
-    .analysis-panel h3 {
-      color: #333;
-      margin-bottom: 15px;
-      font-size: 1.15em;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    
-    .analysis-panel h3 i { color: #667eea; }
-    
-    #summary {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      min-height: 120px;
-      line-height: 1.6;
-      color: #333;
-      font-size: 0.95em;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      border: 1px solid #e9ecef;
-    }
-    
-    #plot {
       width: 100%;
-      height: auto;
-      border-radius: 8px;
-      border: 1px solid #e9ecef;
-      background: white;
-      display: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 14px 16px;
+      background: rgba(15,23,42,0.65);
+      color: #f3f4f6;
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      transition: border 0.2s ease, box-shadow 0.2s;
     }
-    
-    .plot-loading {
+    textarea:focus,
+    input[type="date"]:focus {
+      border-color: rgba(139,92,246,0.9);
+      box-shadow: 0 0 0 1px rgba(139,92,246,0.2);
+    }
+    textarea {
+      height: 140px;
+      resize: none;
+    }
+    .btn-primary,
+    .btn-secondary {
+      border: none;
+      border-radius: 18px;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 14px 20px;
+      cursor: pointer;
+      transition: transform 0.25s ease, box-shadow 0.25s;
+    }
+    .btn-primary {
+      background: linear-gradient(120deg, #d946ef, #8b5cf6, #3b82f6);
+      color: white;
+      box-shadow: 0 25px 40px rgba(88,28,135,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-2px); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.05);
+      color: #e2e8f0;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .quick-section h3 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 600;
+    }
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-top: 24px;
+    }
+    .insight-card {
+      border-radius: 24px;
+      background: rgba(6,11,25,0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: transform 0.25s ease, box-shadow 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+    .insight-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 35px 60px rgba(2,6,23,0.55);
+    }
+    .insight-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .insight-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      color: rgba(226,232,240,0.9);
+      font-size: 14px;
+    }
+    .insight-list li {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px dashed rgba(255,255,255,0.08);
+      padding-bottom: 6px;
+    }
+    .mini-chart {
+      flex: 1;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08));
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 12px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit,minmax(8px,1fr));
+      align-items: end;
+      gap: 8px;
+    }
+    .mini-chart span {
+      display: block;
+      width: 100%;
+      border-radius: 999px;
+      background: linear-gradient(180deg, rgba(167,139,250,1), rgba(59,130,246,0.6));
+      transition: transform 0.3s ease;
+    }
+    .mini-chart span:hover { transform: translateY(-6px); }
+    .insight-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(15,23,42,0.1), rgba(2,6,23,0.9));
+      opacity: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 400px;
-      background: white;
-      border-radius: 8px;
-      border: 1px solid #e9ecef;
-      color: #667eea;
-      font-size: 1.1em;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
     }
-    
-    .spinner {
-      display: inline-block;
-      width: 30px;
-      height: 30px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #667eea;
+    .insight-card:hover .insight-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .insight-overlay button {
+      border: 1px solid rgba(255,255,255,0.4);
+      background: rgba(15,23,42,0.7);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+    }
+    .segments-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+    }
+    .segments-grid div {
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(15,23,42,0.8);
+      padding: 12px;
+      text-align: center;
+    }
+    .map-section {
+      margin-top: 48px;
+      border-radius: 32px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(5,8,20,0.8);
+      box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+      padding: 32px;
+    }
+    #geoMap {
+      width: 100%;
+      min-height: 420px;
+    }
+    .interactive-chart {
+      width: 100%;
+      height: 320px;
+    }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      backdrop-filter: blur(6px);
+    }
+    .modal {
+      width: min(960px, 90vw);
+      background: rgba(8,13,30,0.95);
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 24px;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+    }
+    .modal header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .modal header h4 {
+      margin: 0;
+      font-size: 22px;
+    }
+    .modal-close {
+      border: none;
+      background: rgba(255,255,255,0.08);
+      color: white;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-right: 10px;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
     }
-    
+    .plot-loading,
+    #summaryLoading {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 22px;
+      border: 1px dashed rgba(255,255,255,0.12);
+      padding: 24px;
+      color: rgba(221,214,254,0.8);
+      font-weight: 500;
+    }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.15);
+      border-top-color: #a855f7;
+      animation: spin 1s linear infinite;
+      margin-right: 12px;
+    }
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
-    
     .error-message {
-      background: #fff5f5;
-      border-left: 4px solid #f56565;
-      color: #c53030;
-      padding: 15px;
-      border-radius: 6px;
-      margin-top: 10px;
       display: none;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(248,113,113,0.3);
+      color: #fecaca;
+      font-size: 14px;
     }
-
-    .insights-wrapper {
-      grid-column: 1 / -1;
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 30px;
-      border: 1px solid #e9ecef;
-    }
-
-    .insights-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .insights-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-    }
-
-    .insight-card {
-      background: white;
-      border-radius: 10px;
-      border: 1px solid #e0e3eb;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-height: 260px;
-    }
-
-    .insight-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 10px;
-    }
-
-    .insight-card-header h3 {
-      margin: 0;
-      font-size: 1.1em;
-      color: #2d3748;
-    }
-
-    .insight-status {
-      font-size: 0.85em;
-      color: #718096;
-    }
-
-    .insight-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      flex: 1;
-    }
-
-    .insight-list li {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 6px 0;
-      font-size: 0.95em;
-      border-bottom: 1px dashed #edf2f7;
-    }
-
-    .insight-list li:last-child {
-      border-bottom: none;
-    }
-
-    .insight-list .label {
-      color: #2d3748;
-      font-weight: 500;
-      margin-right: 8px;
-    }
-
-    .insight-list .value {
-      color: #4a5568;
-      font-weight: 600;
-    }
-
-    .insight-plot {
-      width: 100%;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      display: none;
-    }
-
-    .insight-refresh {
-      padding: 10px 20px;
-      background: #667eea;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.2s;
-    }
-
-    .insight-refresh:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .map-wrapper {
-      margin-top: 30px;
-      grid-column: 1 / -1;
-    }
-
-    #geoMap {
-      width: 100%;
-      min-height: 480px;
-    }
-
-    #geoMapLoading {
-      display: none;
-      align-items: center;
-      justify-content: center;
-      min-height: 200px;
-      color: #667eea;
-      font-weight: 600;
-    }
-    
-    @media (max-width: 1024px) {
-      .content {
-        grid-template-columns: 1fr;
-      }
-      
-      .analysis-section {
-        grid-template-columns: 1fr;
-      }
-      
-      .header h1 {
-        font-size: 2em;
-      }
+    @media (max-width: 640px) {
+      .page { padding: 24px 16px 60px; }
+      .card, .map-section { padding: 20px; }
     }
   </style>
 </head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1><i class="fas fa-chart-line"></i> Sales Analytics Agent</h1>
-      <p>Intelligent real-time analysis of revenue, margins, and ROI</p>
-    </div>
-    
-    <div class="content">
-      <div class="panel">
-        <h2><i class="fas fa-question-circle"></i> Query</h2>
-        
-        <label>Your Question:</label>
-        <textarea id="question" placeholder="Ask about trends, margins, anomalies, seasonality, etc.">What are the revenue and margin trends?</textarea>
-        
-        <label>Date Range:</label>
-        <div class="date-range">
-          <div>
-            <input type="date" id="startDate" value="2015-01-01" />
-          </div>
-          <div>
-            <input type="date" id="endDate" value="2016-12-31" />
-          </div>
-        </div>
-        
-        <div class="button-group">
-          <button id="ask"><i class="fas fa-robot"></i> Ask Agent</button>
-          <button id="showroi"><i class="fas fa-chart-bar"></i> Plot Only</button>
-          <button id="loading" style="display: none;"><span class="spinner"></span> Analyzing...</button>
-        </div>
-        
-        <div class="error-message" id="error"></div>
+<body class="bg-blobs">
+  <div class="page">
+    <header class="hero">
+      <div class="hero-content">
+        <div class="hero-icon"><i class="fas fa-chart-line"></i></div>
+        <h1>Sales Analytics Agent</h1>
+        <p>Intelligent real-time analysis of revenue, margins, and ROI</p>
       </div>
-      
-      <div class="panel">
-        <h2><i class="fas fa-info-circle"></i> Info</h2>
-        <div style="color: #666; line-height: 1.8; font-size: 0.95em;">
-          <p><strong>📊 Data Coverage:</strong></p>
-          <p style="margin: 10px 0;">18 months of real sales data (Jan 2015 - Jun 2016)</p>
-          
-          <p style="margin-top: 20px;"><strong>🔍 Analysis Includes:</strong></p>
-          <ul style="margin: 10px 0; margin-left: 20px;">
-            <li>Monthly revenue trends</li>
-            <li>Cost of goods sold (COGS)</li>
-            <li>Gross margin calculations</li>
-            <li>ROI (Return on Investment)</li>
-            <li>Trend detection & anomalies</li>
-          </ul>
-          
-          <p style="margin-top: 20px;"><strong>🤖 LLM-Powered:</strong></p>
-          <p style="margin: 10px 0;">OpenAI GPT-4 provides intelligent summaries and insights</p>
-        </div>
-      </div>
-      
-      <div class="analysis-section">
-        <div class="analysis-panel">
-          <h3><i class="fas fa-lightbulb"></i> Analysis</h3>
-          <div id="summary" style="display: none;">Click "Ask Agent" to get analysis</div>
-          <div id="summaryLoading" class="plot-loading" style="height: 120px; display: none;">
-            <span class="spinner"></span> Processing...
+    </header>
+
+    <section class="grid-two">
+      <div class="card">
+        <h2><i class="fas fa-question-circle" style="color:#c4b5fd;"></i> Query</h2>
+        <div style="margin-top:18px; display:flex; flex-direction:column; gap:18px;">
+          <div>
+            <label>Your Question</label>
+            <textarea id="question" placeholder="Ask about trends, margins, anomalies, seasonality, etc.">What are the revenue and margin trends?</textarea>
           </div>
-        </div>
-        
-        <div class="analysis-panel">
-          <h3><i class="fas fa-image"></i> Visualization</h3>
-          <div id="plotContainer" style="position: relative;">
-            <img id="plot" alt="ROI Chart" />
-            <div id="plotLoading" class="plot-loading" style="display: none;">
-              <span class="spinner"></span> Generating chart...
+          <div>
+            <label>Date Range</label>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap:12px; margin-top:8px;">
+              <input type="date" id="startDate" value="2015-01-01" />
+              <input type="date" id="endDate" value="2016-12-31" />
             </div>
           </div>
+          <div class="error-message" id="error"></div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:12px;">
+            <button id="ask" class="btn-primary"><i class="fas fa-robot" style="margin-right:10px;"></i>Ask Agent</button>
+            <button id="showroi" class="btn-secondary"><i class="fas fa-chart-bar" style="margin-right:10px;"></i>Plot Only</button>
+            <button id="loading" class="btn-primary" style="display:none; align-items:center; justify-content:center;">
+              <span class="spinner"></span>Analyzing...
+            </button>
+          </div>
+          <div id="summaryLoading" class="plot-loading"><span class="spinner"></span>Processing...</div>
+          <div id="summary" style="display:none; border-radius:22px; background:rgba(15,23,42,0.7); padding:20px; line-height:1.6;"></div>
         </div>
       </div>
 
-      <div class="insights-wrapper">
-        <div class="insights-header">
+      <div class="card">
+        <h2><i class="fas fa-info-circle" style="color:#93c5fd;"></i> Info</h2>
+        <div style="display:flex; flex-direction:column; gap:18px; margin-top:18px;">
+          <div style="display:flex; gap:12px;">
+            <div style="font-size:30px;">📊</div>
+            <div>
+              <p style="margin:0; font-weight:600;">Data Coverage</p>
+              <p style="margin:4px 0 0; color:rgba(226,232,240,0.8); font-size:14px;">18 months of real sales data (Jan 2015 - Jun 2016)</p>
+            </div>
+          </div>
           <div>
-            <h2 style="color:#2d3748; font-size:1.4em;">Quick Win Dashboards</h2>
-            <p style="color:#718096; margin-top:6px;">Top customers, products, salespeople, and customer segments for the selected date range.</p>
-          </div>
-          <button id="refreshInsights" class="insight-refresh"><i class="fas fa-sync"></i> Refresh Insights</button>
-        </div>
-        <div class="insights-grid">
-          <div class="insight-card">
-            <div class="insight-card-header">
-              <h3><i class="fas fa-users" style="color:#667eea;"></i> Top Customers</h3>
-              <span class="insight-status" id="topCustomersStatus">Idle</span>
-            </div>
-            <ul class="insight-list" id="topCustomersList">
-              <li>Click refresh to load data</li>
+            <p style="margin:0; font-weight:600;">Analysis Includes:</p>
+            <ul style="margin:10px 0 0 18px; color:rgba(226,232,240,0.84); line-height:1.6;">
+              <li>Monthly revenue trends</li>
+              <li>Cost of goods sold (COGS)</li>
+              <li>Gross margin calculations</li>
+              <li>ROI (Return on Investment)</li>
+              <li>Trend detection & anomalies</li>
             </ul>
-            <img id="topCustomersPlot" class="insight-plot" alt="Top customers chart" />
           </div>
-
-          <div class="insight-card">
-            <div class="insight-card-header">
-              <h3><i class="fas fa-boxes" style="color:#667eea;"></i> Top Products</h3>
-              <span class="insight-status" id="topProductsStatus">Idle</span>
+          <div style="display:flex; gap:12px;">
+            <div style="font-size:30px;">🤖</div>
+            <div>
+              <p style="margin:0; font-weight:600;">LLM-Powered</p>
+              <p style="margin:4px 0 0; color:rgba(226,232,240,0.8); font-size:14px;">OpenAI GPT-4 provides intelligent summaries and insights</p>
             </div>
-            <ul class="insight-list" id="topProductsList">
-              <li>Click refresh to load data</li>
-            </ul>
-            <img id="topProductsPlot" class="insight-plot" alt="Top products chart" />
           </div>
-
-          <div class="insight-card">
-            <div class="insight-card-header">
-              <h3><i class="fas fa-id-badge" style="color:#667eea;"></i> Salesperson Leaders</h3>
-              <span class="insight-status" id="salespeopleStatus">Idle</span>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:12px;">
+            <div style="border-radius:18px; padding:16px; background:rgba(255,255,255,0.04); text-align:center;">
+              <p style="margin:0; text-transform:uppercase; font-size:11px; letter-spacing:0.1em; color:rgba(148,163,184,0.9);">Gross Margin</p>
+              <p style="margin:6px 0 0; font-size:24px; font-weight:600;">38.6%</p>
             </div>
-            <ul class="insight-list" id="salespeopleList">
-              <li>Click refresh to load data</li>
-            </ul>
-            <img id="salespeoplePlot" class="insight-plot" alt="Salesperson chart" />
+            <div style="border-radius:18px; padding:16px; background:rgba(255,255,255,0.04); text-align:center;">
+              <p style="margin:0; text-transform:uppercase; font-size:11px; letter-spacing:0.1em; color:rgba(148,163,184,0.9);">ROI Trend</p>
+              <p style="margin:6px 0 0; font-size:24px; font-weight:600;">+12.4%</p>
+            </div>
           </div>
-
-          <div class="insight-card">
-            <div class="insight-card-header">
-              <h3><i class="fas fa-layer-group" style="color:#667eea;"></i> Customer Segments</h3>
-              <span class="insight-status" id="segmentsStatus">Idle</span>
-            </div>
-            <ul class="insight-list" id="segmentsList">
-              <li>Click refresh to load data</li>
-            </ul>
-            <img id="segmentsPlot" class="insight-plot" alt="Customer segments chart" />
+          <div style="border-radius:20px; overflow:hidden; border:1px solid rgba(255,255,255,0.08); position:relative; min-height:240px;">
+            <div id="roiChart" class="interactive-chart"></div>
+            <div id="roiChartLoading" class="plot-loading" style="min-height:200px;"><span class="spinner"></span>Loading interactive chart...</div>
           </div>
         </div>
       </div>
-      
-      <div class="insights-wrapper map-wrapper">
-        <div class="insights-header">
-          <div>
-            <h2 style="color:#2d3748; font-size:1.4em;">Global Sales Heatmap</h2>
-            <p style="color:#718096; margin-top:6px;">Visualize where customers are spending the most.</p>
-          </div>
-          <button id="refreshGeo" class="insight-refresh"><i class="fas fa-globe"></i> Refresh Map</button>
+    </section>
+
+    <section class="quick-section">
+      <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:baseline; justify-content:space-between;">
+        <div>
+          <h3>Quick Win Dashboards</h3>
+          <p style="margin:6px 0 0; color:rgba(228,233,247,0.75);">Top customers, products, salespeople, and customer segments for the selected date range.</p>
         </div>
-        <div id="geoMapLoading" class="plot-loading" style="display:none;">
-          <span class="spinner"></span> Loading geographic data...
-        </div>
-        <div id="geoMap"></div>
+        <button id="refreshInsights" class="btn-primary" style="padding:10px 24px; font-size:15px; display:flex; align-items:center; gap:10px;"><i class="fas fa-sync"></i> Refresh Insights</button>
       </div>
+      <div class="quick-grid">
+        <div class="insight-card" data-insight="topCustomers">
+          <div class="insight-overlay"><button data-detail="topCustomers"><i class="fas fa-chart-column"></i> Open Chart</button></div>
+          <div class="insight-header">
+            <div><i class="fas fa-users" style="color:#c4b5fd; margin-right:8px;"></i> Top Customers</div>
+            <span id="topCustomersStatus" style="font-size:12px; color:rgba(226,232,240,0.7);">Idle</span>
+          </div>
+          <ul class="insight-list" id="topCustomersList"><li>Click refresh to load data</li></ul>
+          <div id="topCustomersChart" class="mini-chart"></div>
+        </div>
+        <div class="insight-card" data-insight="topProducts">
+          <div class="insight-overlay"><button data-detail="topProducts"><i class="fas fa-chart-simple"></i> Open Chart</button></div>
+          <div class="insight-header">
+            <div><i class="fas fa-boxes" style="color:#93c5fd; margin-right:8px;"></i> Top Products</div>
+            <span id="topProductsStatus" style="font-size:12px; color:rgba(226,232,240,0.7);">Idle</span>
+          </div>
+          <ul class="insight-list" id="topProductsList"><li>Click refresh to load data</li></ul>
+          <div id="topProductsChart" class="mini-chart"></div>
+        </div>
+        <div class="insight-card" data-insight="salespeople">
+          <div class="insight-overlay"><button data-detail="salespeople"><i class="fas fa-user-tie"></i> Open Chart</button></div>
+          <div class="insight-header">
+            <div><i class="fas fa-id-badge" style="color:#fde68a; margin-right:8px;"></i> Salesperson Leaders</div>
+            <span id="salespeopleStatus" style="font-size:12px; color:rgba(226,232,240,0.7);">Idle</span>
+          </div>
+          <ul class="insight-list" id="salespeopleList"><li>Click refresh to load data</li></ul>
+          <div id="salespeopleChart" class="mini-chart"></div>
+        </div>
+        <div class="insight-card" data-insight="segments">
+          <div class="insight-overlay"><button data-detail="segments"><i class="fas fa-circle-notch"></i> Open Chart</button></div>
+          <div class="insight-header">
+            <div><i class="fas fa-layer-group" style="color:#f9a8d4; margin-right:8px;"></i> Customer Segments</div>
+            <span id="segmentsStatus" style="font-size:12px; color:rgba(226,232,240,0.7);">Idle</span>
+          </div>
+          <ul class="insight-list" id="segmentsList"><li>Click refresh to load data</li></ul>
+          <div id="segmentsChart" class="mini-chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="map-section">
+      <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px;">
+        <div>
+          <h3 style="margin:0; font-size:28px;">Global Sales Heatmap</h3>
+          <p style="margin:6px 0 0; color:rgba(226,232,240,0.78);">Visualize where customers are spending the most.</p>
+        </div>
+        <button id="refreshGeo" class="btn-primary" style="display:flex; align-items:center; gap:10px; padding:10px 24px;"><i class="fas fa-globe"></i> Refresh Map</button>
+      </div>
+      <div id="geoMapLoading" class="plot-loading" style="min-height:220px;"><span class="spinner"></span>Loading geographic data...</div>
+      <div id="geoMap"></div>
+    </section>
+  </div>
+
+  <div id="detailModal" class="modal-backdrop">
+    <div class="modal">
+      <header>
+        <h4 id="modalTitle">Insight Detail</h4>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </header>
+      <div id="modalChart" style="width:100%; height:420px;"></div>
     </div>
   </div>
-  
+
   <script>
     const questionEl = document.getElementById('question');
     const startDateEl = document.getElementById('startDate');
@@ -547,92 +535,155 @@
     const showroiBtn = document.getElementById('showroi');
     const summaryEl = document.getElementById('summary');
     const summaryLoadingEl = document.getElementById('summaryLoading');
-    const plotEl = document.getElementById('plot');
-    const plotLoadingEl = document.getElementById('plotLoading');
+    const roiChartEl = document.getElementById('roiChart');
+    const roiChartLoadingEl = document.getElementById('roiChartLoading');
     const errorEl = document.getElementById('error');
     const refreshInsightsBtn = document.getElementById('refreshInsights');
     const refreshGeoBtn = document.getElementById('refreshGeo');
     const geoMapEl = document.getElementById('geoMap');
     const geoMapLoadingEl = document.getElementById('geoMapLoading');
+    const detailModal = document.getElementById('detailModal');
+    const modalClose = document.getElementById('modalClose');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalChart = document.getElementById('modalChart');
+
+    const insightStore = {};
+
     const quickInsights = [
       {
+        key: 'topCustomers',
         name: 'Top Customers',
         endpoint: '/api/top-customers',
         listEl: document.getElementById('topCustomersList'),
         statusEl: document.getElementById('topCustomersStatus'),
-        plotEl: document.getElementById('topCustomersPlot'),
-        formatter: (payload) => {
+        chartEl: document.getElementById('topCustomersChart'),
+        formatter: payload => {
           const rows = (payload.data || []).slice(0, 5);
-          if (!rows.length) return ['No customers found for range'];
+          if (!rows.length) return ['No customers found'];
           return rows.map((row, idx) => ({
             label: `${idx + 1}. ${row.CustomerName}`,
             value: currency(row.total_revenue)
           }));
-        }
+        },
+        getSeries: payload => (payload.data || []).map(row => ({ label: row.CustomerName, value: row.total_revenue })),
+        detailType: 'bar'
       },
       {
+        key: 'topProducts',
         name: 'Top Products',
         endpoint: '/api/top-products',
         listEl: document.getElementById('topProductsList'),
         statusEl: document.getElementById('topProductsStatus'),
-        plotEl: document.getElementById('topProductsPlot'),
-        formatter: (payload) => {
+        chartEl: document.getElementById('topProductsChart'),
+        formatter: payload => {
           const rows = (payload.data || []).slice(0, 5);
-          if (!rows.length) return ['No products found for range'];
+          if (!rows.length) return ['No products found'];
           return rows.map((row, idx) => ({
             label: `${idx + 1}. ${row.StockItemName}`,
             value: `${currency(row.total_revenue)} • ${row.total_units} units`
           }));
-        }
+        },
+        getSeries: payload => (payload.data || []).map(row => ({ label: row.StockItemName, value: row.total_revenue })),
+        detailType: 'bar'
       },
       {
-        name: 'Salespeople',
+        key: 'salespeople',
+        name: 'Salesperson Leaders',
         endpoint: '/api/salesperson-performance',
         listEl: document.getElementById('salespeopleList'),
         statusEl: document.getElementById('salespeopleStatus'),
-        plotEl: document.getElementById('salespeoplePlot'),
-        formatter: (payload) => {
+        chartEl: document.getElementById('salespeopleChart'),
+        formatter: payload => {
           const rows = (payload.data || []).slice(0, 5);
           if (!rows.length) return ['No salesperson data'];
           return rows.map((row, idx) => ({
             label: `${idx + 1}. ${row.salesperson || 'Unknown'}`,
             value: `${currency(row.total_revenue)} • ${Number(row.profit_margin_pct || 0).toFixed(1)}% margin`
           }));
-        }
+        },
+        getSeries: payload => (payload.data || []).map(row => ({ label: row.salesperson || 'Unknown', value: row.total_revenue })),
+        detailType: 'bar'
       },
       {
+        key: 'segments',
         name: 'Customer Segments',
         endpoint: '/api/customer-segmentation',
         listEl: document.getElementById('segmentsList'),
         statusEl: document.getElementById('segmentsStatus'),
-        plotEl: document.getElementById('segmentsPlot'),
-        formatter: (payload) => {
+        chartEl: document.getElementById('segmentsChart'),
+        formatter: payload => {
           const summary = payload.summary || {};
           const segments = payload.data || {};
           const entries = Object.entries(summary.segments || {});
-          if (!entries.length) return ['No segments found'];
-          return entries.sort((a, b) => b[1] - a[1]).map(([segment, count]) => {
+          if (!entries.length) return ['No segment data'];
+          return entries.sort((a,b) => b[1]-a[1]).map(([segment, count]) => {
             const top = (segments[segment] || [])[0];
-            const topText = top ? `Top: ${top.CustomerName} (${currency(top.total_spent)})` : '';
             return {
               label: `${segment} (${count})`,
-              value: topText
+              value: top ? `Top: ${top.CustomerName} (${currency(top.total_spent)})` : ''
             };
           });
-        }
+        },
+        getSeries: payload => {
+          const summary = payload.summary || {};
+          return Object.entries(summary.segments || {}).map(([segment, count]) => ({ label: segment, value: count }));
+        },
+        detailType: 'pie'
       }
     ];
-    
+
+    function currency(value) {
+      const num = Number(value || 0);
+      return '$' + num.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
+    async function loadRoiChart(startDate = startDateEl.value, endDate = endDateEl.value) {
+      roiChartLoadingEl.style.display = 'flex';
+      roiChartEl.innerHTML = '';
+      try {
+        const params = new URLSearchParams({ start_date: startDate, end_date: endDate });
+        const res = await fetch(`/api/roi-data?${params.toString()}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const payload = await res.json();
+        const rows = payload.data || [];
+        if (!rows.length) {
+          roiChartEl.innerHTML = '<div style="text-align:center;color:#94a3b8;padding:20px;">No ROI data</div>';
+          return;
+        }
+        const months = rows.map(r => new Date(r.month).toISOString().slice(0, 10));
+        const traces = [
+          { name: 'Revenue', x: months, y: rows.map(r => r.revenue), mode: 'lines+markers', line: { color: '#818cf8', width: 3 }, marker: { size: 6 } },
+          { name: 'COGS', x: months, y: rows.map(r => r.cogs), mode: 'lines+markers', line: { color: '#fb7185', width: 3 }, marker: { size: 6 } },
+          { name: 'Gross Margin', x: months, y: rows.map(r => r.gross_margin), mode: 'lines+markers', line: { color: '#2dd4bf', width: 3 }, marker: { size: 6 } }
+        ];
+        Plotly.newPlot(roiChartEl, traces, {
+          paper_bgcolor: 'rgba(0,0,0,0)',
+          plot_bgcolor: 'rgba(0,0,0,0)',
+          margin: { l: 50, r: 20, t: 10, b: 50 },
+          legend: { orientation: 'h', y: -0.2 },
+          xaxis: { title: 'Month', gridcolor: 'rgba(255,255,255,0.05)' },
+          yaxis: { title: 'Amount', gridcolor: 'rgba(255,255,255,0.05)' },
+          font: { color: '#e5e7eb' },
+          hovermode: 'x unified'
+        }, { displayModeBar: false, responsive: true });
+      } catch (err) {
+        roiChartEl.innerHTML = `<div style="text-align:center;color:#fecaca;padding:20px;">Error loading chart: ${err.message}</div>`;
+      } finally {
+        roiChartLoadingEl.style.display = 'none';
+      }
+    }
+
     function showError(msg) {
       errorEl.textContent = msg;
       errorEl.style.display = 'block';
-      setTimeout(() => { errorEl.style.display = 'none'; }, 5000);
+      setTimeout(() => errorEl.style.display = 'none', 5000);
     }
-    
-    function hideError() {
-      errorEl.style.display = 'none';
-    }
-    
+
+    function hideError() { errorEl.style.display = 'none'; }
+
     askBtn.onclick = async () => {
       hideError();
       const q = questionEl.value.trim();
@@ -640,98 +691,50 @@
         showError('Please enter a question');
         return;
       }
-      
       const startDate = startDateEl.value;
       const endDate = endDateEl.value;
-      
       askBtn.style.display = 'none';
       showroiBtn.style.display = 'none';
       loadingBtn.style.display = 'flex';
-      
       summaryLoadingEl.style.display = 'flex';
       summaryEl.style.display = 'none';
-      plotLoadingEl.style.display = 'flex';
-      plotEl.style.display = 'none';
-      
       try {
-        // Fetch analysis
         const res = await fetch('/api/ask', {
           method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({
-            question: q,
-            start_date: startDate,
-            end_date: endDate
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question: q, start_date: startDate, end_date: endDate })
         });
-        
         if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.detail || `HTTP ${res.status}`);
         }
-        
         const data = await res.json();
-        
-        // Show summary immediately
         summaryLoadingEl.style.display = 'none';
         summaryEl.textContent = data.summary;
         summaryEl.style.display = 'block';
-        
-        // Load plot
-        plotLoadingEl.style.display = 'flex';
-        plotEl.src = '/api/roi?start_date=' + startDate + '&end_date=' + endDate + '&ts=' + Date.now();
-        plotEl.onload = () => {
-          plotLoadingEl.style.display = 'none';
-          plotEl.style.display = 'block';
-        };
-        plotEl.onerror = () => {
-          plotLoadingEl.style.display = 'none';
-          showError('Failed to load chart');
-        };
-        
+        loadRoiChart(startDate, endDate);
       } catch (err) {
         summaryLoadingEl.style.display = 'none';
-        plotLoadingEl.style.display = 'none';
-        showError('Error: ' + err.message);
+        showError(`Error: ${err.message}`);
       } finally {
         loadingBtn.style.display = 'none';
-        askBtn.style.display = 'flex';
+        askBtn.style.display = 'block';
         showroiBtn.style.display = 'block';
       }
     };
-    
+
     showroiBtn.onclick = () => {
       hideError();
       const startDate = startDateEl.value;
       const endDate = endDateEl.value;
-      
-      plotLoadingEl.style.display = 'flex';
-      plotEl.style.display = 'none';
-      
-      plotEl.src = '/api/roi?start_date=' + startDate + '&end_date=' + endDate + '&ts=' + Date.now();
-      plotEl.onload = () => {
-        plotLoadingEl.style.display = 'none';
-        plotEl.style.display = 'block';
-      };
-      plotEl.onerror = () => {
-        plotLoadingEl.style.display = 'none';
-        showError('Failed to load chart');
-      };
+      loadRoiChart(startDate, endDate);
     };
-
-    function currency(value) {
-      const num = Number(value || 0);
-      return '$' + num.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
-    }
 
     function renderInsightList(el, items) {
       if (Array.isArray(items)) {
-        el.innerHTML = items.map(item => {
-          if (typeof item === 'string') {
-            return `<li>${item}</li>`;
-          }
-          return `<li><span class="label">${item.label}</span><span class="value">${item.value}</span></li>`;
-        }).join('');
+        el.innerHTML = items.map(item => typeof item === 'string'
+          ? `<li>${item}</li>`
+          : `<li><span>${item.label}</span><span>${item.value}</span></li>`).join('');
       } else {
         el.innerHTML = '<li>No data</li>';
       }
@@ -740,11 +743,8 @@
     async function loadInsightCard(config) {
       config.statusEl.textContent = 'Loading...';
       renderInsightList(config.listEl, ['Loading...']);
-      config.plotEl.style.display = 'none';
-      const params = new URLSearchParams({
-        start_date: startDateEl.value,
-        end_date: endDateEl.value
-      });
+      if (config.chartEl) config.chartEl.innerHTML = '<div style="width:100%;text-align:center;color:#e2e8f0;opacity:0.7;">Loading…</div>';
+      const params = new URLSearchParams({ start_date: startDateEl.value, end_date: endDateEl.value });
       try {
         const res = await fetch(`${config.endpoint}?${params.toString()}`);
         if (!res.ok) {
@@ -752,16 +752,14 @@
           throw new Error(err.detail || `HTTP ${res.status}`);
         }
         const data = await res.json();
-        const items = config.formatter(data);
-        renderInsightList(config.listEl, items);
-        if (data.plot && config.plotEl) {
-          config.plotEl.src = `${data.plot}?ts=${Date.now()}`;
-          config.plotEl.style.display = 'block';
-        }
+        renderInsightList(config.listEl, config.formatter(data));
+        const series = config.getSeries ? config.getSeries(data).slice(0, 10) : [];
+        if (config.chartEl) renderMiniChart(config.chartEl, series);
+        insightStore[config.key] = { title: config.name, payload: data, series, detailType: config.detailType };
         config.statusEl.textContent = 'Updated';
       } catch (err) {
         renderInsightList(config.listEl, [`Error: ${err.message}`]);
-        config.plotEl.style.display = 'none';
+        if (config.chartEl) config.chartEl.innerHTML = '<div style="text-align:center;color:#fecaca;">Error</div>';
         config.statusEl.textContent = 'Error';
       }
     }
@@ -772,15 +770,11 @@
       refreshInsightsBtn.disabled = false;
     }
 
-    
     async function loadGeoMap() {
       refreshGeoBtn.disabled = true;
       geoMapLoadingEl.style.display = 'flex';
-      const params = new URLSearchParams({
-        start_date: startDateEl.value,
-        end_date: endDateEl.value,
-        limit: 200
-      });
+      geoMapEl.innerHTML = '';
+      const params = new URLSearchParams({ start_date: startDateEl.value, end_date: endDateEl.value, limit: 200 });
       try {
         const res = await fetch(`/api/geo-sales?${params.toString()}`);
         if (!res.ok) {
@@ -790,9 +784,8 @@
         const payload = await res.json();
         const points = (payload.data || []).filter(p => p.latitude !== null && p.longitude !== null);
         if (!points.length) {
-          geoMapEl.innerHTML = '<div style="text-align:center;padding:40px;color:#718096;">No geographic data available.</div>';
+          geoMapEl.innerHTML = '<div style="text-align:center;padding:40px;color:#e2e8f0;">No geographic data available.</div>';
         } else {
-          const sizes = points.map(p => Math.max(8, Math.sqrt(p.total_revenue) / 200));
           const trace = {
             type: 'scattergeo',
             mode: 'markers',
@@ -800,41 +793,101 @@
             lat: points.map(p => p.latitude),
             text: points.map(p => `${p.CityName}, ${p.CountryName}<br>Revenue: ${currency(p.total_revenue)}`),
             marker: {
-              size: sizes,
+              size: points.map(p => Math.max(8, Math.sqrt(p.total_revenue) / 200)),
               color: points.map(p => p.total_revenue),
               colorscale: 'Viridis',
-              cmin: Math.min(...points.map(p => p.total_revenue)),
-              cmax: Math.max(...points.map(p => p.total_revenue)),
               colorbar: { title: 'Revenue' },
-              opacity: 0.8
+              opacity: 0.85
             },
             hovertemplate: '%{text}<extra></extra>'
           };
           const layout = {
-            margin: {l:0, r:0, t:0, b:0},
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            margin: { l:0, r:0, t:0, b:0 },
             geo: {
-              projection: {type: 'natural earth'},
+              projection: { type: 'natural earth' },
               showland: true,
-              landcolor: '#f4f4f4',
-              subunitcolor: '#d3d3d3',
-              countrycolor: '#d3d3d3'
+              landcolor: '#111827',
+              subunitcolor: '#374151',
+              countrycolor: '#374151',
+              bgcolor: 'rgba(0,0,0,0)'
             }
           };
-          Plotly.newPlot(geoMapEl, [trace], layout, {displayModeBar: false});
+          Plotly.newPlot(geoMapEl, [trace], layout, { displayModeBar: false, responsive: true });
         }
       } catch (err) {
-        geoMapEl.innerHTML = `<div style="text-align:center;padding:40px;color:#c53030;">Error loading map: ${err.message}</div>`;
+        geoMapEl.innerHTML = `<div style="text-align:center;padding:40px;color:#fecaca;">Error loading map: ${err.message}</div>`;
       } finally {
         geoMapLoadingEl.style.display = 'none';
         refreshGeoBtn.disabled = false;
       }
     }
 
+    function renderMiniChart(el, series) {
+      if (!el) return;
+      if (!series.length) {
+        el.innerHTML = '<div style="width:100%;text-align:center;color:#94a3b8;">No data</div>';
+        return;
+      }
+      const max = Math.max(...series.map(s => s.value));
+      el.innerHTML = series.slice(0, 12).map(s => {
+        const pct = max ? (s.value / max) * 100 : 0;
+        return `<span style="height:${pct || 4}%" title="${s.label}"></span>`;
+      }).join('');
+    }
+
+    function openDetailModal(key) {
+      const store = insightStore[key];
+      if (!store || !store.series || !store.series.length) {
+        showError('Load the insight first before opening its chart.');
+        return;
+      }
+      modalTitle.textContent = store.title;
+      detailModal.style.display = 'flex';
+      const labels = store.series.map(s => s.label);
+      const values = store.series.map(s => s.value);
+      let trace;
+      if (store.detailType === 'pie') {
+        trace = { type: 'pie', labels, values, textinfo: 'label+percent', hole: 0.4 };
+      } else {
+        trace = {
+          type: 'bar',
+          x: values,
+          y: labels,
+          orientation: 'h',
+          marker: { color: '#8b5cf6' }
+        };
+      }
+      Plotly.newPlot(modalChart, [trace], {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        margin: { l: 120, r: 20, t: 20, b: 40 },
+        font: { color: 'white' }
+      }, { displayModeBar: false, responsive: true });
+    }
+
+    function closeDetailModal() {
+      detailModal.style.display = 'none';
+    }
+
+    document.querySelectorAll('[data-detail]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        openDetailModal(btn.dataset.detail);
+      });
+    });
+
+    modalClose.addEventListener('click', closeDetailModal);
+    detailModal.addEventListener('click', e => { if (e.target === detailModal) closeDetailModal(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetailModal(); });
+
     refreshInsightsBtn.addEventListener('click', loadQuickInsights);
     refreshGeoBtn.addEventListener('click', loadGeoMap);
     window.addEventListener('load', () => {
       loadQuickInsights();
       loadGeoMap();
+      loadRoiChart();
     });
   </script>
 </body>

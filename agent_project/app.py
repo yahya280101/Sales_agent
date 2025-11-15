@@ -41,6 +41,28 @@ def api_roi(start_date: str = '2015-01-01', end_date: str = '2016-12-31'):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get('/roi-data')
+def api_roi_data(start_date: str = '2015-01-01', end_date: str = '2016-12-31'):
+    """Return ROI timeseries data for interactive charts."""
+    try:
+        df = compute_roi(start_date, end_date)
+        if df.empty:
+            raise HTTPException(status_code=400, detail="No data for the requested date range")
+        df = df.sort_values('month')
+        records = []
+        for _, row in df.iterrows():
+            records.append({
+                'month': row['month'].isoformat() if hasattr(row['month'], 'isoformat') else str(row['month']),
+                'revenue': float(row['revenue']),
+                'cogs': float(row['cogs']),
+                'gross_margin': float(row['gross_margin']),
+                'roi': float(row['roi']) if row['roi'] is not None else None
+            })
+        return JSONResponse({'data': records})
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.post('/ask')
 async def api_ask(req: AskRequest):
     # compute ROI table and summarize
