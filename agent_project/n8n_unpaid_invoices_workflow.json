@@ -1,0 +1,215 @@
+{
+  "name": "PepsiCo Unpaid Invoices Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "webhookId": "",
+      "notesInFlow": false,
+      "notes": "Runs every weekday at 9 AM"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:8000/api/unpaid-invoices",
+        "authentication": "none",
+        "options": {
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "days_overdue",
+                "value": "30"
+              },
+              {
+                "name": "limit",
+                "value": "100"
+              }
+            ]
+          }
+        }
+      },
+      "name": "Get Unpaid Invoices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        460,
+        300
+      ],
+      "notesInFlow": false,
+      "notes": "Fetch invoices 30+ days overdue"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "unpaid_invoices",
+        "options": {}
+      },
+      "name": "Split Invoice Records",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ],
+      "notesInFlow": false,
+      "notes": "Split array into individual items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.contact_email }}",
+              "operation": "isNotEmpty"
+            }
+          ],
+          "number": [
+            {
+              "value1": "={{ $json.outstanding_balance }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "name": "Filter Valid Contacts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "notesInFlow": false,
+      "notes": "Only send if email exists and balance > 0"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "email": "={{ $json.contact_email }}",
+        "subject": "Payment Reminder - Invoice #{{ $json.invoice_id }} Overdue",
+        "emailType": "html",
+        "message": "<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background: linear-gradient(135deg, #0054a6 0%, #003d79 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }\n    .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }\n    .invoice-details { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }\n    .amount { font-size: 24px; color: #d32f2f; font-weight: bold; }\n    .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 8px 8px; }\n    .button { display: inline-block; padding: 12px 30px; background: #0054a6; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }\n  </style>\n</head>\n<body>\n  <div class=\"container\">\n    <div class=\"header\">\n      <h1>Payment Reminder</h1>\n    </div>\n    <div class=\"content\">\n      <p>Dear {{ $json.contact_name || $json.customer_name }},</p>\n      \n      <p>This is a friendly reminder that we have an outstanding invoice that requires your attention.</p>\n      \n      <div class=\"invoice-details\">\n        <h3>Invoice Details</h3>\n        <p><strong>Customer:</strong> {{ $json.customer_name }}</p>\n        <p><strong>Invoice #:</strong> {{ $json.invoice_id }}</p>\n        <p><strong>Invoice Date:</strong> {{ $json.invoice_date }}</p>\n        <p><strong>Original Amount:</strong> ${{ $json.transaction_amount.toFixed(2) }}</p>\n        <p><strong>Outstanding Balance:</strong> <span class=\"amount\">${{ $json.outstanding_balance.toFixed(2) }}</span></p>\n        <p><strong>Days Overdue:</strong> {{ $json.days_overdue }} days</p>\n        <p><strong>Payment Terms:</strong> Net {{ $json.payment_terms_days }} days</p>\n      </div>\n      \n      <p>Please remit payment at your earliest convenience to avoid any service interruption or late fees.</p>\n      \n      <p>If you have already sent payment, please disregard this notice. If you have any questions or would like to discuss payment arrangements, please contact us.</p>\n      \n      <p><strong>Questions?</strong> Contact {{ $json.salesperson_name || 'your sales representative' }}\n      {{ $json.salesperson_email ? ' at ' + $json.salesperson_email : '' }}</p>\n      \n      <p>Thank you for your prompt attention to this matter.</p>\n      \n      <p>Best regards,<br>\n      <strong>PepsiCo Accounts Receivable</strong></p>\n    </div>\n    <div class=\"footer\">\n      <p>This is an automated reminder from PepsiCo Sales Analytics System</p>\n      <p>&copy; 2025 PepsiCo. All rights reserved.</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {
+          "allowUnauthorizedCerts": false
+        },
+        "fromEmail": "no-reply@pepsico-analytics.com",
+        "senderName": "PepsiCo Accounts Receivable",
+        "ccEmail": "mundisgl@gmail.com"
+      },
+      "name": "Send Email Reminder",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        200
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "1",
+          "name": "SMTP Account"
+        }
+      },
+      "notesInFlow": false,
+      "notes": "Send reminder to customer and CC to mundisgl@gmail.com"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "email": "mundisgl@gmail.com",
+        "subject": "No Unpaid Invoices Found",
+        "message": "Good news! No invoices are currently 30+ days overdue.\n\nGenerated at: {{ $now.toISO() }}",
+        "options": {}
+      },
+      "name": "Send Success Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        400
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "1",
+          "name": "SMTP Account"
+        }
+      },
+      "notesInFlow": false,
+      "notes": "Notify when no overdue invoices exist"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Unpaid Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unpaid Invoices": {
+      "main": [
+        [
+          {
+            "node": "Split Invoice Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Invoice Records": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Contacts": {
+      "main": [
+        [
+          {
+            "node": "Send Email Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-15T00:00:00.000Z",
+  "versionId": "1"
+}
+

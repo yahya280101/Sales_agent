@@ -333,3 +333,43 @@ def forecast_product_demand(stock_item_id: int = None, start_date: str = '2015-0
         'end_date': end_date,
         'explanation': 'Baseline linear trend forecast blended with recent performance.'
     }
+
+
+def get_unpaid_invoices(days_overdue: int = 0, limit: int = 100) -> pd.DataFrame:
+    """
+    Get customers with unpaid invoices (OutstandingBalance > 0).
+    
+    Args:
+        days_overdue: Minimum days past payment terms (0 = all unpaid)
+        limit: Maximum number of records to return
+    
+    Returns:
+        DataFrame with customer info, invoice details, and contact information
+    """
+    query = f"""
+    SELECT TOP {limit}
+        c.CustomerID,
+        c.CustomerName,
+        c.PhoneNumber,
+        c.PaymentDays,
+        p.EmailAddress AS ContactEmail,
+        p.FullName AS ContactName,
+        ct.InvoiceID,
+        ct.TransactionDate,
+        ct.TransactionAmount,
+        ct.OutstandingBalance,
+        DATEDIFF(DAY, DATEADD(DAY, c.PaymentDays, ct.TransactionDate), GETDATE()) AS DaysOverdue,
+        i.InvoiceDate,
+        salesperson.FullName AS SalespersonName,
+        salesperson.EmailAddress AS SalespersonEmail
+    FROM [Sales].[CustomerTransactions] ct
+    INNER JOIN [Sales].[Customers] c ON ct.CustomerID = c.CustomerID
+    LEFT JOIN [Application].[People] p ON c.PrimaryContactPersonID = p.PersonID
+    LEFT JOIN [Sales].[Invoices] i ON ct.InvoiceID = i.InvoiceID
+    LEFT JOIN [Application].[People] salesperson ON i.SalespersonPersonID = salesperson.PersonID
+    WHERE ct.OutstandingBalance > 0
+        AND ct.IsFinalized = 1
+        AND DATEDIFF(DAY, DATEADD(DAY, c.PaymentDays, ct.TransactionDate), GETDATE()) >= {days_overdue}
+    ORDER BY ct.OutstandingBalance DESC, ct.TransactionDate ASC;
+    """
+    return run_sql(query)

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sales Analytics Agent</title>
+  <title>PepsiCo Sales Analytics</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -83,9 +83,15 @@
       text-align: center;
     }
     .hero-icon {
-      font-size: clamp(32px, 6vw, 56px);
       margin-bottom: 12px;
-      color: rgba(255,255,255,0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .hero-icon img {
+      width: clamp(80px, 12vw, 140px);
+      height: auto;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
     }
     .hero h1 {
       font-size: clamp(32px, 6vw, 56px);
@@ -390,8 +396,8 @@
   <div class="page">
     <header class="hero">
       <div class="hero-content">
-        <div class="hero-icon"><i class="fas fa-chart-line"></i></div>
-        <h1>Sales Analytics Agent</h1>
+        <div class="hero-icon"><img src="/static/images/pepsico-logo.png" alt="PepsiCo Logo"></div>
+        <h1>PepsiCo Sales Analytics</h1>
         <p>Intelligent real-time analysis of revenue, margins, and ROI</p>
       </div>
     </header>
@@ -547,6 +553,80 @@
       <div id="forecastChartLoading" class="plot-loading" style="min-height:220px;"><span class="spinner"></span>Building forecast...</div>
       <div id="forecastChart" class="interactive-chart"></div>
       <p id="forecastExplanation" style="margin-top:12px; color:rgba(226,232,240,0.75);"></p>
+    </section>
+
+    <section class="forecast-section" style="margin-top:48px;">
+      <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:24px;">
+        <div>
+          <h3 style="margin:0; font-size:28px;"><i class="fas fa-envelope" style="color:#a855f7; margin-right:12px;"></i>Email Center</h3>
+          <p style="margin:6px 0 0; color:rgba(226,232,240,0.78);">AI-powered email campaigns with OpenAI</p>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:24px;">
+        <div class="card" style="background:rgba(15,23,42,0.7);">
+          <h4 style="margin:0 0 16px 0; display:flex; align-items:center; gap:8px;">
+            <i class="fas fa-cog" style="color:#93c5fd;"></i> Email Configuration
+          </h4>
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+              <label>Email Type</label>
+              <select id="emailType" style="width:100%; margin-top:6px;">
+                <option value="payment_reminder">💰 Payment Reminder</option>
+                <option value="appreciation">🙏 Customer Appreciation</option>
+                <option value="product_recommendation">🛍️ Product Recommendation</option>
+                <option value="follow_up">📞 Follow-up</option>
+                <option value="seasonal_promotion">🎉 Seasonal Promotion</option>
+                <option value="order_confirmation">✅ Order Confirmation</option>
+                <option value="welcome">👋 Welcome Email</option>
+                <option value="win_back">🔙 Win-Back Campaign</option>
+              </select>
+            </div>
+            <div>
+              <label>Select Customer</label>
+              <input type="text" id="customerSearch" placeholder="Search customers..." style="margin-top:6px;">
+              <select id="customerSelect" size="8" style="width:100%; margin-top:8px; padding:8px; border-radius:12px;">
+                <option value="">Loading customers...</option>
+              </select>
+            </div>
+            <div>
+              <label>Override Recipient Email</label>
+              <input type="email" id="overrideEmail" placeholder="Leave empty to use customer's email" style="margin-top:6px;">
+            </div>
+            <div>
+              <label>Additional Context (Optional)</label>
+              <textarea id="emailContext" placeholder="Add any special notes or details..." style="height:80px; margin-top:6px;"></textarea>
+            </div>
+            <button id="generateEmailBtn" class="btn-primary" style="display:flex; align-items:center; justify-content:center; gap:10px;">
+              <i class="fas fa-magic"></i> Generate Email with AI
+            </button>
+            <div id="emailGenerating" style="display:none;" class="plot-loading">
+              <span class="spinner"></span>Generating perfect email...
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="background:rgba(15,23,42,0.7);">
+          <h4 style="margin:0 0 16px 0; display:flex; align-items:center; gap:8px;">
+            <i class="fas fa-eye" style="color:#f472b6;"></i> Email Preview
+          </h4>
+          <div id="emailPreview" style="min-height:400px;">
+            <div style="text-align:center; padding:60px 20px; color:rgba(226,232,240,0.6);">
+              <i class="fas fa-envelope-open-text" style="font-size:48px; margin-bottom:16px; opacity:0.5;"></i>
+              <p>Configure email settings and click "Generate Email with AI" to create a personalized draft</p>
+            </div>
+          </div>
+          <div id="emailActions" style="display:none; margin-top:20px; display:flex; gap:12px;">
+            <button id="sendEmailBtn" class="btn-primary" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px;">
+              <i class="fas fa-paper-plane"></i> Send Email
+            </button>
+            <button id="regenerateEmailBtn" class="btn-secondary" style="display:flex; align-items:center; justify-content:center; gap:8px;">
+              <i class="fas fa-redo"></i> Regenerate
+            </button>
+          </div>
+          <div id="emailStatus" style="display:none; margin-top:12px; padding:12px; border-radius:12px;"></div>
+        </div>
+      </div>
     </section>
   </div>
 
@@ -1035,10 +1115,213 @@
 
     refreshInsightsBtn.addEventListener('click', loadQuickInsights);
     refreshGeoBtn.addEventListener('click', loadGeoMap);
+
+    // Email Center Functionality
+    const emailTypeSelect = document.getElementById('emailType');
+    const customerSearchInput = document.getElementById('customerSearch');
+    const customerSelect = document.getElementById('customerSelect');
+    const overrideEmailInput = document.getElementById('overrideEmail');
+    const emailContextTextarea = document.getElementById('emailContext');
+    const generateEmailBtn = document.getElementById('generateEmailBtn');
+    const emailGenerating = document.getElementById('emailGenerating');
+    const emailPreview = document.getElementById('emailPreview');
+    const emailActions = document.getElementById('emailActions');
+    const sendEmailBtn = document.getElementById('sendEmailBtn');
+    const regenerateEmailBtn = document.getElementById('regenerateEmailBtn');
+    const emailStatus = document.getElementById('emailStatus');
+
+    let allCustomers = [];
+    let currentEmailDraft = null;
+    let currentRecipient = null;
+
+    async function loadCustomers() {
+      try {
+        const res = await fetch('/api/customers-list?limit=200');
+        const data = await res.json();
+        allCustomers = data.customers || [];
+        displayCustomers(allCustomers);
+      } catch (err) {
+        console.error('Failed to load customers:', err);
+        customerSelect.innerHTML = '<option value="">Error loading customers</option>';
+      }
+    }
+
+    function displayCustomers(customers) {
+      if (!customers.length) {
+        customerSelect.innerHTML = '<option value="">No customers with email found</option>';
+        return;
+      }
+      customerSelect.innerHTML = customers.map(c => 
+        `<option value="${c.customer_id}" data-email="${c.contact_email}" data-name="${c.contact_name || c.customer_name}">
+          ${c.customer_name} - ${c.contact_email}
+        </option>`
+      ).join('');
+    }
+
+    customerSearchInput.addEventListener('input', (e) => {
+      const search = e.target.value.toLowerCase();
+      if (!search) {
+        displayCustomers(allCustomers);
+        return;
+      }
+      const filtered = allCustomers.filter(c => 
+        c.customer_name.toLowerCase().includes(search) ||
+        (c.contact_email && c.contact_email.toLowerCase().includes(search)) ||
+        (c.contact_name && c.contact_name.toLowerCase().includes(search))
+      );
+      displayCustomers(filtered);
+    });
+
+    generateEmailBtn.addEventListener('click', async () => {
+      const selectedOption = customerSelect.selectedOptions[0];
+      if (!selectedOption || !selectedOption.value) {
+        showEmailStatus('Please select a customer', 'error');
+        return;
+      }
+
+      const customerId = parseInt(selectedOption.value);
+      let recipientEmail = selectedOption.dataset.email;
+      const recipientName = selectedOption.dataset.name;
+      const emailType = emailTypeSelect.value;
+      const additionalContext = emailContextTextarea.value.trim();
+
+      // Use override email if provided
+      const overrideEmail = overrideEmailInput.value.trim();
+      if (overrideEmail) {
+        recipientEmail = overrideEmail;
+        console.log('Using override email:', recipientEmail);
+      }
+
+      generateEmailBtn.style.display = 'none';
+      emailGenerating.style.display = 'flex';
+      emailActions.style.display = 'none';
+      emailStatus.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/generate-email-draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email_type: emailType,
+            recipient_name: recipientName,
+            recipient_email: recipientEmail,
+            customer_id: customerId,
+            additional_context: additionalContext || null
+          })
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        
+        const data = await res.json();
+        currentEmailDraft = data.draft;
+        currentRecipient = { email: recipientEmail, name: recipientName };
+
+        displayEmailPreview(data.draft, recipientEmail);
+        emailActions.style.display = 'flex';
+        const genMsg = `Email generated by ${data.draft.generated_by === 'openai' ? 'OpenAI ✨' : 'Template'}`;
+        const overrideMsg = overrideEmail ? ` (sending to ${overrideEmail} instead of customer's email)` : '';
+        showEmailStatus(genMsg + overrideMsg, 'success');
+      } catch (err) {
+        showEmailStatus(`Failed to generate email: ${err.message}`, 'error');
+      } finally {
+        generateEmailBtn.style.display = 'flex';
+        emailGenerating.style.display = 'none';
+      }
+    });
+
+    function displayEmailPreview(draft, recipientEmail) {
+      emailPreview.innerHTML = `
+        <div style="background:rgba(255,255,255,0.95); border-radius:16px; padding:20px; color:#333;">
+          <div style="border-bottom:2px solid #0054a6; padding-bottom:12px; margin-bottom:16px;">
+            <div style="font-size:12px; color:#666; margin-bottom:8px;">
+              <strong>To:</strong> ${recipientEmail}
+            </div>
+            <div style="font-size:18px; font-weight:600; color:#0054a6;">
+              ${draft.subject}
+            </div>
+            ${draft.preview_text ? `
+              <div style="font-size:13px; color:#888; margin-top:6px; font-style:italic;">
+                ${draft.preview_text}
+              </div>
+            ` : ''}
+          </div>
+          <div style="max-height:500px; overflow-y:auto;">
+            ${draft.body}
+          </div>
+        </div>
+      `;
+    }
+
+    regenerateEmailBtn.addEventListener('click', () => {
+      generateEmailBtn.click();
+    });
+
+    sendEmailBtn.addEventListener('click', async () => {
+      if (!currentEmailDraft || !currentRecipient) {
+        showEmailStatus('No email draft to send', 'error');
+        return;
+      }
+
+      if (!confirm(`Send this email to ${currentRecipient.email}?`)) {
+        return;
+      }
+
+      sendEmailBtn.disabled = true;
+      sendEmailBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;"></span> Sending...';
+
+      try {
+        const res = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to_email: currentRecipient.email,
+            subject: currentEmailDraft.subject,
+            body_html: currentEmailDraft.body,
+            cc_email: 'mundisgl@gmail.com'
+          })
+        });
+
+        const data = await res.json();
+        
+        if (data.success) {
+          showEmailStatus(`✅ ${data.message}`, 'success');
+        } else {
+          showEmailStatus(`❌ ${data.message}`, 'error');
+        }
+      } catch (err) {
+        showEmailStatus(`Failed to send: ${err.message}`, 'error');
+      } finally {
+        sendEmailBtn.disabled = false;
+        sendEmailBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Email';
+      }
+    });
+
+    function showEmailStatus(message, type = 'info') {
+      const colors = {
+        success: { bg: 'rgba(34,197,94,0.15)', border: '#22c55e', text: '#22c55e' },
+        error: { bg: 'rgba(239,68,68,0.15)', border: '#ef4444', text: '#ef4444' },
+        info: { bg: 'rgba(59,130,246,0.15)', border: '#3b82f6', text: '#3b82f6' }
+      };
+      const style = colors[type] || colors.info;
+      
+      emailStatus.style.display = 'block';
+      emailStatus.style.background = style.bg;
+      emailStatus.style.borderLeft = `4px solid ${style.border}`;
+      emailStatus.style.color = style.text;
+      emailStatus.textContent = message;
+
+      if (type === 'success') {
+        setTimeout(() => {
+          emailStatus.style.display = 'none';
+        }, 5000);
+      }
+    }
+
     window.addEventListener('load', () => {
       loadQuickInsights();
       loadGeoMap();
       loadRoiChart();
+      loadCustomers();
     });
   </script>
 </body>
