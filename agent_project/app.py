@@ -1,10 +1,13 @@
-from fastapi import FastAPI, Request, HTTPException, APIRouter
+from fastapi import FastAPI, Request, HTTPException, APIRouter, Body
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 import os
 from datetime import datetime
+import json
+import urllib.request
+import urllib.error
 from analytics import (
     compute_roi, plot_timeseries, plot_bar_chart,
     top_customers, top_products, salesperson_performance, customer_segmentation,
@@ -26,6 +29,86 @@ class AskRequest(BaseModel):
     question: str
     start_date: Optional[str] = '2015-01-01'
     end_date: Optional[str] = '2016-12-31'
+
+
+class AudioSessionRequest(BaseModel):
+    start_date: Optional[str] = '2015-01-01'
+    end_date: Optional[str] = '2016-12-31'
+
+
+def build_context_summary(start_date: str, end_date: str) -> str:
+    parts = []
+    try:
+        roi_df = compute_roi(start_date, end_date)
+        if not roi_df.empty:
+            revenue = roi_df['revenue'].sum()
+            cogs = roi_df['cogs'].sum()
+            margin = roi_df['gross_margin'].sum()
+            avg_roi = roi_df['roi'].dropna().mean() if roi_df['roi'].notna().any() else 0
+            parts.append(f"Revenue {revenue:,.0f}, COGS {cogs:,.0f}, gross margin {margin:,.0f}, avg ROI {avg_roi:.2f}x.")
+    except Exception:
+        pass
+    try:
+        customers = top_customers(start_date, end_date, limit=3)
+        if not customers.empty:
+            formatted = ", ".join(f"{row.CustomerName} ({row.total_revenue:,.0f})" for _, row in customers.iterrows())
+            parts.append(f"Top customers: {formatted}.")
+    except Exception:
+        pass
+    try:
+        products = top_products(start_date, end_date, limit=3)
+        if not products.empty:
+            formatted = ", ".join(f"{row.StockItemName} ({row.total_units:,.0f} units)" for _, row in products.iterrows())
+            parts.append(f"Top products: {formatted}.")
+    except Exception:
+        pass
+    try:
+        perf = salesperson_performance(start_date, end_date).head(3)
+        if not perf.empty:
+            formatted = ", ".join(f"{row.salesperson or 'Unknown'} ({row.total_revenue:,.0f})" for _, row in perf.iterrows())
+            parts.append(f"Sales leaders: {formatted}.")
+    except Exception:
+        pass
+    return " ".join(parts) if parts else "No contextual metrics available."
+
+
+@api_router.post('/audio-session')
+def create_audio_session(body: AudioSessionRequest = Body(None)):
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        raise HTTPException(status_code=500, detail='OPENAI_API_KEY not configured')
+    start = body.start_date if body and body.start_date else '2015-01-01'
+    end = body.end_date if body and body.end_date else '2016-12-31'
+    context_summary = build_context_summary(start, end)
+    payload = {
+        'model': os.getenv('OPENAI_REALTIME_MODEL', 'gpt-4o-realtime-preview'),
+        'voice': os.getenv('OPENAI_REALTIME_VOICE', 'verse'),
+        'instructions': (
+            "You are a live voice sales analyst. Use the context below to answer with concrete numbers in under 60 words.\n"
+            f"{context_summary}"
+        )
+    }
+    data = json.dumps(payload).encode('utf-8')
+    req = urllib.request.Request(
+        'https://api.openai.com/v1/realtime/sessions',
+        data=data,
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        },
+        method='POST'
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp_body = resp.read()
+            status = resp.status
+    except urllib.error.HTTPError as exc:
+        raise HTTPException(status_code=exc.code, detail=exc.read().decode('utf-8', errors='ignore'))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    if status >= 400:
+        raise HTTPException(status_code=status, detail=resp_body.decode('utf-8', errors='ignore'))
+    return JSONResponse(json.loads(resp_body.decode('utf-8')))
 
 
 def describe_forecast_rows(rows):

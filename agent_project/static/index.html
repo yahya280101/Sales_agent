@@ -415,12 +415,16 @@
           <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:12px;">
             <button id="ask" class="btn-primary"><i class="fas fa-robot" style="margin-right:10px;"></i>Ask Agent</button>
             <button id="showroi" class="btn-secondary"><i class="fas fa-chart-bar" style="margin-right:10px;"></i>Plot Only</button>
+            <button id="toggleAudio" class="btn-secondary"><i class="fas fa-microphone"></i> Voice Agent</button>
             <button id="loading" class="btn-primary" style="display:none; align-items:center; justify-content:center;">
               <span class="spinner"></span>Analyzing...
             </button>
           </div>
           <div id="summaryLoading" class="plot-loading"><span class="spinner"></span>Processing...</div>
           <div id="summary" style="display:none; border-radius:22px; background:rgba(15,23,42,0.7); padding:20px; line-height:1.6;"></div>
+          <div id="audioStatus" style="display:none; margin-top:10px; border-radius:16px; border:1px solid rgba(255,255,255,0.1); padding:12px; background:rgba(15,23,42,0.6); font-size:14px;"></div>
+          <div id="audioTranscripts" style="display:none; margin-top:10px; border-radius:16px; border:1px solid rgba(255,255,255,0.08); padding:12px; background:rgba(15,23,42,0.4); min-height:60px; font-size:14px; line-height:1.6;"></div>
+          <audio id="assistantAudio" autoplay playsinline style="display:none;"></audio>
         </div>
       </div>
 
@@ -548,6 +552,8 @@
       <div id="forecastChart" class="interactive-chart"></div>
       <p id="forecastExplanation" style="margin-top:12px; color:rgba(226,232,240,0.75);"></p>
     </section>
+
+    
   </div>
 
   <div id="detailModal" class="modal-backdrop">
@@ -588,9 +594,17 @@
     const forecastChartLoading = document.getElementById('forecastChartLoading');
     const forecastSubtitle = document.getElementById('forecastSubtitle');
     const forecastExplanation = document.getElementById('forecastExplanation');
+    const toggleAudioBtn = document.getElementById('toggleAudio');
+    const audioStatusEl = document.getElementById('audioStatus');
+    const audioTranscriptsEl = document.getElementById('audioTranscripts');
+    const assistantAudioEl = document.getElementById('assistantAudio');
 
     const insightStore = {};
     let forecastInitialized = false;
+    let audioActive = false;
+    let audioPeer = null;
+    let audioStream = null;
+    let audioTranscriptBuffer = '';
 
     const quickInsights = [
       {
@@ -1040,6 +1054,131 @@
       loadGeoMap();
       loadRoiChart();
     });
+
+    async function initAudioSession() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        if (audioStatusEl) {
+          audioStatusEl.style.display = 'block';
+          audioStatusEl.textContent = 'Microphone access is not supported in this browser.';
+        }
+        return;
+      }
+      const startDate = startDateEl?.value || '2015-01-01';
+      const endDate = endDateEl?.value || '2016-12-31';
+      try {
+        if (audioStatusEl) {
+          audioStatusEl.style.display = 'block';
+          audioStatusEl.textContent = 'Requesting audio session token...';
+        }
+        audioTranscriptBuffer = '';
+        if (audioTranscriptsEl) {
+          audioTranscriptsEl.style.display = 'block';
+          audioTranscriptsEl.textContent = '';
+        }
+        const tokenRes = await fetch('/api/audio-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_date: startDate, end_date: endDate })
+        });
+        if (!tokenRes.ok) throw new Error(`HTTP ${tokenRes.status}`);
+        const tokenPayload = await tokenRes.json();
+        const clientSecret = tokenPayload?.client_secret?.value || tokenPayload?.client_secret;
+        const model = tokenPayload?.model || 'gpt-4o-realtime-preview';
+        if (!clientSecret) throw new Error('Missing client secret');
+
+        if (audioStatusEl) audioStatusEl.textContent = 'Initializing microphone...';
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        const pc = new RTCPeerConnection();
+        audioStream.getTracks().forEach(track => pc.addTrack(track, audioStream));
+        pc.ontrack = event => {
+          if (assistantAudioEl) {
+            assistantAudioEl.srcObject = event.streams[0];
+            assistantAudioEl.play().catch(() => {});
+          }
+        };
+        pc.onconnectionstatechange = () => {
+          if (audioStatusEl) audioStatusEl.textContent = `Connection: ${pc.connectionState}`;
+        };
+
+        const dataChannel = pc.createDataChannel('oai-events');
+        dataChannel.onmessage = event => {
+          if (!audioTranscriptsEl || !event.data) return;
+          try {
+            const parsed = JSON.parse(event.data);
+            if (parsed.type === 'response.output_text.delta' && parsed.delta) {
+              audioTranscriptBuffer += parsed.delta;
+              audioTranscriptsEl.textContent = audioTranscriptBuffer;
+            } else if (parsed.type === 'response.completed') {
+              audioTranscriptBuffer += '\n';
+            }
+          } catch {
+            audioTranscriptsEl.textContent = event.data;
+          }
+        };
+
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await new Promise(resolve => {
+          pc.onicecandidate = event => {
+            if (!event.candidate) resolve();
+          };
+        });
+
+        const realtimeResp = await fetch(`https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${clientSecret}`,
+            'Content-Type': 'application/sdp'
+          },
+          body: pc.localDescription.sdp
+        });
+        if (!realtimeResp.ok) throw new Error(`Realtime connect failed: ${realtimeResp.status}`);
+        const answerSDP = await realtimeResp.text();
+        await pc.setRemoteDescription({ type: 'answer', sdp: answerSDP });
+
+        audioPeer = pc;
+        audioActive = true;
+        if (audioStatusEl) audioStatusEl.textContent = 'Live conversation active. Ask your question!';
+        if (audioTranscriptsEl) audioTranscriptsEl.textContent = 'Listening...';
+        toggleAudioBtn.innerHTML = '<i class="fas fa-stop"></i> Stop Conversation';
+      } catch (err) {
+        stopAudioSession(err.message);
+      }
+    }
+
+    function stopAudioSession(errorMsg) {
+      if (audioPeer) {
+        try { audioPeer.close(); } catch (_) {}
+        audioPeer = null;
+      }
+      if (audioStream) {
+        audioStream.getTracks().forEach(track => track.stop());
+        audioStream = null;
+      }
+      if (assistantAudioEl) assistantAudioEl.srcObject = null;
+      audioTranscriptBuffer = '';
+      audioActive = false;
+      if (audioStatusEl) {
+        audioStatusEl.style.display = 'block';
+        audioStatusEl.textContent = errorMsg ? `Audio session ended: ${errorMsg}` : 'Audio session stopped.';
+      }
+      if (audioTranscriptsEl) {
+        audioTranscriptsEl.style.display = 'block';
+        audioTranscriptsEl.textContent = 'Speak to start...';
+      }
+      toggleAudioBtn.innerHTML = '<i class="fas fa-microphone"></i> Start Conversation';
+    }
+
+    if (toggleAudioBtn) {
+      toggleAudioBtn.addEventListener('click', () => {
+        if (audioActive) {
+          stopAudioSession();
+        } else {
+          initAudioSession();
+        }
+      });
+    }
   </script>
 </body>
 </html>
