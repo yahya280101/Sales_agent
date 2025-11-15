@@ -11,6 +11,7 @@ import json
 import urllib.request
 import urllib.error
 import smtplib
+import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from analytics import (
@@ -31,6 +32,14 @@ os.makedirs('agent_outputs', exist_ok=True)
 # Create API router FIRST (before static mounts)
 api_router = APIRouter()
 
+DEFAULT_SMTP_USERNAME = os.getenv('DEFAULT_SMTP_USERNAME', 't60029350@gmail.com')
+RAW_APP_PASSWORD = os.getenv('DEFAULT_SMTP_APP_PASSWORD') or 'tfye nebm jhkh lxdf'
+DEFAULT_SMTP_APP_PASSWORDS = []
+if RAW_APP_PASSWORD:
+    DEFAULT_SMTP_APP_PASSWORDS.append(RAW_APP_PASSWORD)
+    compact = RAW_APP_PASSWORD.replace(' ', '')
+    if compact and compact not in DEFAULT_SMTP_APP_PASSWORDS:
+        DEFAULT_SMTP_APP_PASSWORDS.append(compact)
 
 class AskRequest(BaseModel):
     question: str
@@ -544,12 +553,25 @@ def api_send_email(request: SendEmailRequest):
     """Send emails via SMTP using configured credentials."""
     try:
         smtp_server = request.smtp_server or os.getenv('SMTP_SERVER', 'smtp.gmail.com')
-        smtp_port = request.smtp_port or int(os.getenv('SMTP_PORT', '587'))
-        smtp_username = request.smtp_username or os.getenv('SMTP_USERNAME')
-        smtp_password = request.smtp_password or os.getenv('SMTP_PASSWORD')
+        smtp_port = request.smtp_port or int(os.getenv('SMTP_PORT', '465'))
+        smtp_username = request.smtp_username or os.getenv('SMTP_USERNAME') or DEFAULT_SMTP_USERNAME
         from_email = request.from_email or smtp_username or 'noreply@pepsico.com'
 
-        if not smtp_username or not smtp_password:
+        password_candidates = []
+        if request.smtp_password:
+            password_candidates.append(request.smtp_password)
+        env_pw = os.getenv('SMTP_PASSWORD')
+        if env_pw:
+            password_candidates.append(env_pw)
+        password_candidates.extend(DEFAULT_SMTP_APP_PASSWORDS)
+
+        # Remove duplicates while preserving order
+        deduped_passwords = []
+        for pw in password_candidates:
+            if pw and pw not in deduped_passwords:
+                deduped_passwords.append(pw)
+
+        if not smtp_username or not deduped_passwords:
             return JSONResponse({
                 'success': False,
                 'message': 'SMTP credentials not configured. Provide SMTP_USERNAME/PASSWORD env vars or in the request.'
@@ -563,15 +585,31 @@ def api_send_email(request: SendEmailRequest):
             msg['Cc'] = request.cc_email
         msg.attach(MIMEText(request.body_html, 'html'))
 
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(smtp_username, smtp_password)
-            recipients = [request.to_email]
-            if request.cc_email:
-                recipients.append(request.cc_email)
-            server.sendmail(from_email, recipients, msg.as_string())
-
-        return JSONResponse({'success': True, 'message': f'Email sent successfully to {request.to_email}'})
+        auth_error = None
+        context = ssl.create_default_context()
+        for smtp_password in deduped_passwords:
+            try:
+                if smtp_port == 465:
+                    with smtplib.SMTP_SSL(smtp_server, smtp_port, context=context) as server:
+                        server.login(smtp_username, smtp_password)
+                        recipients = [request.to_email]
+                        if request.cc_email:
+                            recipients.append(request.cc_email)
+                        server.sendmail(from_email, recipients, msg.as_string())
+                else:
+                    with smtplib.SMTP(smtp_server, smtp_port) as server:
+                        server.starttls(context=context)
+                        server.login(smtp_username, smtp_password)
+                        recipients = [request.to_email]
+                        if request.cc_email:
+                            recipients.append(request.cc_email)
+                        server.sendmail(from_email, recipients, msg.as_string())
+                return JSONResponse({'success': True, 'message': f'Email sent successfully to {request.to_email}'})
+            except smtplib.SMTPAuthenticationError as err:
+                auth_error = err
+                continue
+        message = f'Failed to authenticate with Gmail SMTP: {auth_error}' if auth_error else 'Failed to send email.'
+        return JSONResponse({'success': False, 'message': message}, status_code=500)
     except Exception as exc:
         return JSONResponse({'success': False, 'message': f'Failed to send email: {exc}'}, status_code=500)
 

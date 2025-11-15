@@ -425,50 +425,96 @@ Return strictly JSON:
         return generate_fallback_email(email_type, recipient_name, customer_data)
 
 
+
+
 def generate_fallback_email(email_type: str, recipient_name: str, customer_data: Optional[Dict] = None) -> Dict:
-    """Generate comprehensive email templates with real database data when OpenAI is unavailable."""
+    """HTML templates used when the LLM is unavailable."""
     customer_data = customer_data or {}
-    
-    # Helper to format currency
-    def fmt_currency(value): 
-        return f"${float(value):,.2f}" if value else "$0.00"
-    
-    templates = {
-        'payment_reminder': {
-            'subject': f"Payment Reminder - Invoice #{customer_data.get('invoice_id', 'Pending')}",
-            'preview_text': f"Outstanding balance: {fmt_currency(customer_data.get('outstanding_balance', 0))}",
-            'body': f"""
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f5f6fb;">
-                    <div style="background: linear-gradient(135deg, #0054a6, #003d79); color: white; padding: 40px 30px; text-align: center; border-radius: 8px 8px 0 0;">
-                        <h1 style="margin: 0; font-size: 28px;">💰 Payment Reminder</h1>
-                        <p style="margin: 8px 0 0; opacity: 0.9;">Invoice #{customer_data.get('invoice_id', 'N/A')}</p>
-                    </div>
-                    <div style="padding: 40px 30px; background: #ffffff;">
-                        <p style="font-size: 16px; line-height: 1.6;">Dear {recipient_name},</p>
-                        <p style="font-size: 16px; line-height: 1.6;">This is a friendly reminder regarding an outstanding balance on your account.</p>
-                        
-                        <div style="background: linear-gradient(135deg, #fff5f5, #ffe5e5); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #e32526;">
-                            <h3 style="margin: 0 0 15px 0; color: #e32526;">Account Summary</h3>
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <tr><td style="padding: 8px 0; color: #666;">Invoice Number:</td><td style="padding: 8px 0; text-align: right; font-weight: 600;">{customer_data.get('invoice_id', 'N/A')}</td></tr>
-                                <tr><td style="padding: 8px 0; color: #666;">Invoice Date:</td><td style="padding: 8px 0; text-align: right; font-weight: 600;">{customer_data.get('invoice_date', 'N/A')}</td></tr>
-                                <tr><td style="padding: 8px 0; color: #666;">Payment Terms:</td><td style="padding: 8px 0; text-align: right; font-weight: 600;">Net {customer_data.get('payment_terms_days', 30)} days</td></tr>
-                                <tr><td style="padding: 8px 0; color: #666;">Days Overdue:</td><td style="padding: 8px 0; text-align: right; font-weight: 600; color: #e32526;">{customer_data.get('days_overdue', 0)} days</td></tr>
-                                <tr style="border-top: 2px solid #e32526;"><td style="padding: 12px 0; font-size: 18px; font-weight: 600;">Amount Due:</td><td style="padding: 12px 0; text-align: right; font-size: 24px; font-weight: 700; color: #e32526;">{fmt_currency(customer_data.get('outstanding_balance', 0))}</td></tr>
-                            </table>
-                        </div>
-                        
-                        <p style="font-size: 16px; line-height: 1.6;">Please remit payment at your earliest convenience to avoid any service interruption or late fees.</p>
-                        <p style="font-size: 16px; line-height: 1.6;">If you have already sent payment, please disregard this notice. For questions about your account, please contact our accounts receivable team.</p>
-                        
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                            <p style="margin: 0; font-size: 14px; color: #666;"><strong>Payment Options:</strong></p>
-                            <p style="margin: 8px 0 0; font-size: 14px; color: #666;">• Wire Transfer • Check • ACH • Credit Card</p>
-                        </div>
-                        
-                        <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">Thank you for your prompt attention to this matter.</p>
-                        <p style="font-size: 16px; line-height: 1.6; margin: 0;">Best regards,<br><strong>PepsiCo Accounts Receivable Team</strong></p>
-                    </div>
-                    <div style="background: #f5f6fb; padding: 20px 30px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 8px 8px;">
-                        <p style="margin: 0;">This is an automated reminder from PepsiCo Sales Analytics</p>
-                        <p style="margin: 8px 0 0; font-size: 12px;">Need help? Contact us at <a href="mailto:ar@pepsico.com">ar@pepsico.com</a></p>
+
+    def fmt_currency(value):
+        try:
+            return f"${float(value):,.2f}"
+        except Exception:
+            return "$0.00"
+
+    def wrap_html(content: str) -> str:
+        return (
+            '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;'
+            'background:#f8fafc;border-radius:16px;padding:24px;color:#0f172a;">'
+            f'{content}'
+            '</div>'
+        )
+
+    template = (email_type or 'follow_up').lower()
+
+    if template == 'payment_reminder':
+        subject = f"Payment Reminder – Invoice #{customer_data.get('invoice_id', 'Pending')}"
+        preview = f"Balance due {fmt_currency(customer_data.get('outstanding_balance', 0))}"
+        body = wrap_html(
+            f"<h2 style='color:#0054a6;margin:0 0 12px;'>Payment Reminder</h2>"
+            f"<p>Dear {recipient_name}, this is a reminder that invoice #{customer_data.get('invoice_id', 'N/A')} "
+            f"is {customer_data.get('days_overdue', 0)} days past due. The amount due is {fmt_currency(customer_data.get('outstanding_balance', 0))}.</p>"
+            "<p>Please remit payment or let us know if it has already been processed.</p>"
+            "<p>Thank you,<br>PepsiCo Accounts Receivable</p>"
+        )
+    elif template == 'product_recommendation':
+        subject = "New products selected for you"
+        preview = "Ideas based on recent purchases"
+        body = wrap_html(
+            f"<h2 style='color:#8b5cf6;margin:0 0 12px;'>Recommendations for {recipient_name}</h2>"
+            f"<p>Based on your interest in {customer_data.get('previous_products', 'recent PepsiCo items')}, "
+            "we have a few complementary products to consider.</p>"
+            f"<p>Total spent to date: {fmt_currency(customer_data.get('total_spent', 0))}. "
+            "Reply if you would like samples or pricing.</p>"
+        )
+    elif template == 'appreciation':
+        subject = "Thank you for your continued partnership"
+        preview = "Quick appreciation note"
+        body = wrap_html(
+            f"<h2 style='color:#0ea5e9;margin:0 0 12px;'>We appreciate you</h2>"
+            f"<p>Dear {recipient_name}, thanks for trusting PepsiCo with {fmt_currency(customer_data.get('total_spent', 0))} in spend "
+            "over the years. Let us know how we can support your upcoming initiatives.</p>"
+        )
+    elif template == 'seasonal_promotion':
+        subject = f"{customer_data.get('season', 'Seasonal')} promotion"
+        preview = "Limited-time discount"
+        body = wrap_html(
+            f"<h2 style='color:#f97316;margin:0 0 12px;'>{customer_data.get('promotion_type', 'Seasonal')} Offer</h2>"
+            f"<p>Enjoy {customer_data.get('discount', '15%')} off featured products when you order before the window closes.</p>"
+        )
+    elif template == 'order_confirmation':
+        subject = f"Order #{customer_data.get('order_id', 'N/A')} confirmed"
+        preview = f"Total {fmt_currency(customer_data.get('order_total', 0))}"
+        body = wrap_html(
+            "<h2 style='color:#10b981;margin:0 0 12px;'>Order Confirmed</h2>"
+            f"<p>Thanks for your order, {recipient_name}. Estimated delivery: {customer_data.get('delivery_date', '5-7 business days')}.</p>"
+        )
+    elif template == 'welcome':
+        subject = "Welcome to PepsiCo"
+        preview = "Let's build something great"
+        body = wrap_html(
+            f"<h2 style='color:#3b82f6;margin:0 0 12px;'>Welcome, {recipient_name}!</h2>"
+            f"<p>Use your first-order incentive of {customer_data.get('welcome_discount', '10%')} on any catalog item.</p>"
+        )
+    elif template == 'win_back':
+        subject = "We would love to partner again"
+        preview = "Special incentive to return"
+        body = wrap_html(
+            f"<h2 style='color:#f43f5e;margin:0 0 12px;'>We miss working with you</h2>"
+            f"<p>It has been {customer_data.get('days_inactive', 180)} days since the last order. "
+            f"Enjoy {customer_data.get('incentive', '20% off')} on your next purchase.</p>"
+        )
+    else:
+        subject = "Checking in"
+        preview = "Friendly follow-up"
+        body = wrap_html(
+            f"<h2 style='color:#6366f1;margin:0 0 12px;'>Just following up, {recipient_name}</h2>"
+            "<p>Let us know if you need product availability, pricing, or support.</p>"
+        )
+
+    return {
+        'subject': subject,
+        'preview_text': preview,
+        'body': body,
+        'generated_by': 'template'
+    }
