@@ -10,14 +10,17 @@ from numbers import Number
 import json
 import urllib.request
 import urllib.error
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from analytics import (
     compute_roi, plot_timeseries, plot_bar_chart,
     top_customers, top_products, salesperson_performance, customer_segmentation,
-    sales_by_location, forecast_product_demand,
+    sales_by_location, forecast_product_demand, get_unpaid_invoices,
     find_products_by_name, find_customer_by_name, customer_metrics,
     customer_monthly_sales, customer_top_products
 )
-from agent import summarize_dataframe, forecast_with_llm, customer_insight_with_llm
+from agent import summarize_dataframe, forecast_with_llm, customer_insight_with_llm, generate_email_draft
 import pandas as pd
 
 app = FastAPI(title='Sales Agent')
@@ -33,6 +36,27 @@ class AskRequest(BaseModel):
     question: str
     start_date: Optional[str] = '2015-01-01'
     end_date: Optional[str] = '2016-12-31'
+
+
+class EmailDraftRequest(BaseModel):
+    email_type: str
+    recipient_name: str
+    recipient_email: str
+    customer_id: Optional[int] = None
+    customer_data: Optional[dict] = None
+    additional_context: Optional[str] = None
+
+
+class SendEmailRequest(BaseModel):
+    to_email: str
+    subject: str
+    body_html: str
+    from_email: Optional[str] = None
+    cc_email: Optional[str] = None
+    smtp_server: Optional[str] = None
+    smtp_port: Optional[int] = 587
+    smtp_username: Optional[str] = None
+    smtp_password: Optional[str] = None
 
 
 class AudioSessionRequest(BaseModel):
@@ -424,6 +448,170 @@ def api_demand_forecast(stock_item_id: Optional[int] = None,
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get('/customers-list')
+def api_customers_list(limit: int = 100, search: Optional[str] = None):
+    """List customers with contact info to drive the email center UI."""
+    try:
+        query = f"""
+        SELECT TOP {limit}
+            c.CustomerID,
+            c.CustomerName,
+            p.EmailAddress AS ContactEmail,
+            p.FullName AS ContactName,
+            c.PhoneNumber,
+            (SELECT SUM(il.ExtendedPrice)
+             FROM Sales.Invoices i
+             JOIN Sales.InvoiceLines il ON i.InvoiceID = il.InvoiceID
+             WHERE i.CustomerID = c.CustomerID) AS TotalSpent
+        FROM Sales.Customers c
+        LEFT JOIN Application.People p ON c.PrimaryContactPersonID = p.PersonID
+        WHERE p.EmailAddress IS NOT NULL
+        """
+        if search:
+            safe_search = search.replace("'", "''")
+            query += f" AND (c.CustomerName LIKE '%{safe_search}%' OR p.FullName LIKE '%{safe_search}%')"
+        query += " ORDER BY c.CustomerName"
+
+        from analytics import run_sql
+        df = run_sql(query)
+        customers = []
+        for _, row in df.iterrows():
+            customers.append({
+                'customer_id': int(row['CustomerID']),
+                'customer_name': str(row['CustomerName']),
+                'contact_email': str(row['ContactEmail']) if row['ContactEmail'] else None,
+                'contact_name': str(row['ContactName']) if row['ContactName'] else None,
+                'phone_number': str(row['PhoneNumber']) if row['PhoneNumber'] else None,
+                'total_spent': float(row['TotalSpent']) if row['TotalSpent'] else 0
+            })
+        return JSONResponse({'count': len(customers), 'customers': customers})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@api_router.post('/generate-email-draft')
+def api_generate_email_draft(request: EmailDraftRequest):
+    """Generate an AI-powered email draft using OpenAI."""
+    try:
+        customer_data = request.customer_data or {}
+        if request.customer_id and not customer_data:
+            query = f"""
+            SELECT 
+                c.CustomerID,
+                c.CustomerName,
+                c.PaymentDays,
+                (SELECT SUM(il.ExtendedPrice) 
+                 FROM Sales.Invoices i
+                 JOIN Sales.InvoiceLines il ON i.InvoiceID = il.InvoiceID
+                 WHERE i.CustomerID = c.CustomerID) AS TotalSpent,
+                (SELECT TOP 1 ct.OutstandingBalance
+                 FROM Sales.CustomerTransactions ct
+                 WHERE ct.CustomerID = c.CustomerID AND ct.OutstandingBalance > 0
+                 ORDER BY ct.TransactionDate DESC) AS OutstandingBalance,
+                (SELECT TOP 1 DATEDIFF(DAY, DATEADD(DAY, c.PaymentDays, ct.TransactionDate), GETDATE())
+                 FROM Sales.CustomerTransactions ct
+                 WHERE ct.CustomerID = c.CustomerID AND ct.OutstandingBalance > 0
+                 ORDER BY ct.TransactionDate DESC) AS DaysOverdue
+            FROM Sales.Customers c
+            WHERE c.CustomerID = {request.customer_id}
+            """
+            from analytics import run_sql
+            df = run_sql(query)
+            if not df.empty:
+                row = df.iloc[0]
+                customer_data = {
+                    'total_spent': float(row['TotalSpent']) if row['TotalSpent'] else 0,
+                    'outstanding_balance': float(row['OutstandingBalance']) if row['OutstandingBalance'] else 0,
+                    'days_overdue': int(row['DaysOverdue']) if row['DaysOverdue'] else 0,
+                    'payment_terms_days': int(row['PaymentDays']) if row['PaymentDays'] else 30
+                }
+
+        draft = generate_email_draft(
+            email_type=request.email_type,
+            recipient_name=request.recipient_name,
+            customer_data=customer_data,
+            additional_context=request.additional_context
+        )
+        return JSONResponse({'success': True, 'draft': draft, 'recipient_email': request.recipient_email})
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@api_router.post('/send-email')
+def api_send_email(request: SendEmailRequest):
+    """Send emails via SMTP using configured credentials."""
+    try:
+        smtp_server = request.smtp_server or os.getenv('SMTP_SERVER', 'smtp.gmail.com')
+        smtp_port = request.smtp_port or int(os.getenv('SMTP_PORT', '587'))
+        smtp_username = request.smtp_username or os.getenv('SMTP_USERNAME')
+        smtp_password = request.smtp_password or os.getenv('SMTP_PASSWORD')
+        from_email = request.from_email or smtp_username or 'noreply@pepsico.com'
+
+        if not smtp_username or not smtp_password:
+            return JSONResponse({
+                'success': False,
+                'message': 'SMTP credentials not configured. Provide SMTP_USERNAME/PASSWORD env vars or in the request.'
+            }, status_code=400)
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = request.subject
+        msg['From'] = from_email
+        msg['To'] = request.to_email
+        if request.cc_email:
+            msg['Cc'] = request.cc_email
+        msg.attach(MIMEText(request.body_html, 'html'))
+
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(smtp_username, smtp_password)
+            recipients = [request.to_email]
+            if request.cc_email:
+                recipients.append(request.cc_email)
+            server.sendmail(from_email, recipients, msg.as_string())
+
+        return JSONResponse({'success': True, 'message': f'Email sent successfully to {request.to_email}'})
+    except Exception as exc:
+        return JSONResponse({'success': False, 'message': f'Failed to send email: {exc}'}, status_code=500)
+
+
+@api_router.get('/unpaid-invoices')
+def api_unpaid_invoices(days_overdue: int = 0, limit: int = 100):
+    """Return customers with unpaid invoices and related contact details."""
+    try:
+        df = get_unpaid_invoices(days_overdue, limit)
+        if df.empty:
+            return JSONResponse({'count': 0, 'unpaid_invoices': [], 'message': 'No unpaid invoices found'})
+
+        records = []
+        for _, row in df.iterrows():
+            records.append({
+                'customer_id': int(row['CustomerID']),
+                'customer_name': str(row['CustomerName']),
+                'phone_number': str(row['PhoneNumber']) if row['PhoneNumber'] else None,
+                'contact_email': str(row['ContactEmail']) if row['ContactEmail'] else None,
+                'contact_name': str(row['ContactName']) if row['ContactName'] else None,
+                'invoice_id': int(row['InvoiceID']) if row['InvoiceID'] else None,
+                'invoice_date': str(row['InvoiceDate']) if row['InvoiceDate'] else None,
+                'transaction_date': str(row['TransactionDate']),
+                'transaction_amount': float(row['TransactionAmount']),
+                'outstanding_balance': float(row['OutstandingBalance']),
+                'days_overdue': int(row['DaysOverdue']),
+                'payment_terms_days': int(row['PaymentDays']),
+                'salesperson_name': str(row['SalespersonName']) if row['SalespersonName'] else None,
+                'salesperson_email': str(row['SalespersonEmail']) if row['SalespersonEmail'] else None
+            })
+
+        total_outstanding = float(df['OutstandingBalance'].sum())
+        return JSONResponse({
+            'count': len(records),
+            'total_outstanding': total_outstanding,
+            'unpaid_invoices': records,
+            'generated_at': datetime.utcnow().isoformat()
+        })
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @api_router.post('/customer-intent')

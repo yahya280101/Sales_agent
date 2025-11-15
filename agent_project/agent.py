@@ -290,3 +290,185 @@ Data:
         except Exception:
             pass
     return _fallback_customer_insight(customer_name, metrics, monthly, top_products)
+
+
+def generate_email_draft(
+    email_type: str,
+    recipient_name: str,
+    customer_data: Optional[Dict] = None,
+    additional_context: Optional[str] = None
+) -> Dict:
+    """
+    Generate professional email drafts using OpenAI based on email type and context.
+    
+    Args:
+        email_type: Type of email (payment_reminder, product_recommendation, appreciation, 
+                   follow_up, seasonal_promotion, order_confirmation, welcome, win_back)
+        recipient_name: Name of the recipient
+        customer_data: Dictionary with customer info (spending, products, overdue_amount, etc.)
+        additional_context: Any additional context for the email
+    
+    Returns:
+        Dict with subject, body (HTML), preview_text
+    """
+    if not HAS_OPENAI or client is None:
+        return generate_fallback_email(email_type, recipient_name, customer_data)
+    
+    api_key = os.getenv('OPENAI_API_KEY')
+    if not api_key or not api_key.startswith('sk-'):
+        return generate_fallback_email(email_type, recipient_name, customer_data)
+    
+    customer_data = customer_data or {}
+    
+    # Build context based on email type
+    email_templates = {
+        'payment_reminder': {
+            'context': f"Customer: {recipient_name}. Outstanding balance: ${customer_data.get('outstanding_balance', 0):,.2f}. Days overdue: {customer_data.get('days_overdue', 0)}. Invoice #{customer_data.get('invoice_id', 'N/A')}.",
+            'tone': 'professional and friendly but firm',
+            'goal': 'remind the customer about an overdue payment while maintaining goodwill'
+        },
+        'product_recommendation': {
+            'context': f"Customer: {recipient_name}. Previous purchases: {customer_data.get('previous_products', 'various products')}. Total spending: ${customer_data.get('total_spent', 0):,.2f}. Recommended products based on their purchase history.",
+            'tone': 'enthusiastic and helpful',
+            'goal': 'suggest products they might be interested in based on their purchase patterns'
+        },
+        'appreciation': {
+            'context': f"Customer: {recipient_name}. Loyal customer who has spent ${customer_data.get('total_spent', 0):,.2f} over {customer_data.get('years_as_customer', 'several')} years. Thank them for their business.",
+            'tone': 'warm and grateful',
+            'goal': 'express genuine appreciation for their continued business'
+        },
+        'follow_up': {
+            'context': f"Customer: {recipient_name}. Following up after {customer_data.get('follow_up_reason', 'their recent interaction')}. Last order was {customer_data.get('days_since_order', 'recently')} days ago.",
+            'tone': 'friendly and helpful',
+            'goal': 'check in and offer assistance while encouraging future business'
+        },
+        'seasonal_promotion': {
+            'context': f"Customer: {recipient_name}. Announce a {customer_data.get('promotion_type', 'special')} promotion for {customer_data.get('season', 'this season')}. Discount: {customer_data.get('discount', '15%')}.",
+            'tone': 'exciting and engaging',
+            'goal': 'create urgency and excitement about a limited-time promotional offer'
+        },
+        'order_confirmation': {
+            'context': f"Customer: {recipient_name}. Order #{customer_data.get('order_id', 'N/A')}. Total: ${customer_data.get('order_total', 0):,.2f}. Estimated delivery: {customer_data.get('delivery_date', '5-7 business days')}.",
+            'tone': 'clear and reassuring',
+            'goal': 'confirm their order details and set clear expectations'
+        },
+        'welcome': {
+            'context': f"New customer: {recipient_name}. Welcome them to PepsiCo. First order discount: {customer_data.get('welcome_discount', '10%')}.",
+            'tone': 'welcoming and enthusiastic',
+            'goal': 'make a great first impression and encourage their first purchase'
+        },
+        'win_back': {
+            'context': f"Inactive customer: {recipient_name}. Last purchase was {customer_data.get('days_inactive', 180)} days ago. They previously spent ${customer_data.get('total_spent', 0):,.2f}. Special incentive: {customer_data.get('incentive', '20% off')}.",
+            'tone': 'friendly and enticing',
+            'goal': 'rekindle the relationship and encourage them to return'
+        }
+    }
+    
+    template = email_templates.get(email_type, email_templates['follow_up'])
+    context_str = template['context']
+    if additional_context:
+        context_str += f" Additional context: {additional_context}"
+    
+    prompt = f"""You are a professional email copywriter for PepsiCo. Write a compelling business email.
+
+Email Type: {email_type.replace('_', ' ').title()}
+Recipient: {recipient_name}
+Context: {context_str}
+Tone: {template.get('tone')}
+Goal: {template.get('goal')}
+
+Generate a professional email with:
+1. A compelling subject line (max 60 characters)
+2. A preview text (max 100 characters) 
+3. HTML email body (use inline styles, modern design, responsive, PepsiCo branding colors: #0054a6 blue, #e32526 red)
+
+The email should be:
+- Personalized and engaging
+- Include specific numbers/details from the context
+- Have a clear call-to-action
+- Be 150-250 words
+- Use proper email HTML structure with inline CSS
+
+Return strictly JSON:
+{{
+  "subject": "...",
+  "preview_text": "...",
+  "body": "...complete HTML email..."
+}}"""
+
+    try:
+        resp = client.chat.completions.create(
+            model=os.getenv('OPENAI_MODEL', 'gpt-4o-mini'),
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1500,
+            temperature=0.7,
+            timeout=15
+        )
+        text = resp.choices[0].message.content.strip()
+        
+        # Extract JSON from response
+        start = text.find('{')
+        end = text.rfind('}')
+        if start == -1 or end == -1:
+            raise ValueError("LLM response missing JSON")
+        
+        result = json.loads(text[start:end+1])
+        
+        return {
+            'subject': result.get('subject', f'Message from PepsiCo'),
+            'preview_text': result.get('preview_text', ''),
+            'body': result.get('body', '<p>Email content</p>'),
+            'generated_by': 'openai'
+        }
+    except Exception as e:
+        print(f"Email generation error: {e}")
+        return generate_fallback_email(email_type, recipient_name, customer_data)
+
+
+def generate_fallback_email(email_type: str, recipient_name: str, customer_data: Optional[Dict] = None) -> Dict:
+    """Generate comprehensive email templates with real database data when OpenAI is unavailable."""
+    customer_data = customer_data or {}
+    
+    # Helper to format currency
+    def fmt_currency(value): 
+        return f"${float(value):,.2f}" if value else "$0.00"
+    
+    templates = {
+        'payment_reminder': {
+            'subject': f"Payment Reminder - Invoice #{customer_data.get('invoice_id', 'Pending')}",
+            'preview_text': f"Outstanding balance: {fmt_currency(customer_data.get('outstanding_balance', 0))}",
+            'body': f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f5f6fb;">
+                    <div style="background: linear-gradient(135deg, #0054a6, #003d79); color: white; padding: 40px 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                        <h1 style="margin: 0; font-size: 28px;">💰 Payment Reminder</h1>
+                        <p style="margin: 8px 0 0; opacity: 0.9;">Invoice #{customer_data.get('invoice_id', 'N/A')}</p>
+                    </div>
+                    <div style="padding: 40px 30px; background: #ffffff;">
+                        <p style="font-size: 16px; line-height: 1.6;">Dear {recipient_name},</p>
+                        <p style="font-size: 16px; line-height: 1.6;">This is a friendly reminder regarding an outstanding balance on your account.</p>
+                        
+                        <div style="background: linear-gradient(135deg, #fff5f5, #ffe5e5); padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #e32526;">
+                            <h3 style="margin: 0 0 15px 0; color: #e32526;">Account Summary</h3>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr><td style="padding: 8px 0; color: #666;">Invoice Number:</td><td style="padding: 8px 0; text-align: right; font-weight: 600;">{customer_data.get('invoice_id', 'N/A')}</td></tr>
+                                <tr><td style="padding: 8px 0; color: #666;">Invoice Date:</td><td style="padding: 8px 0; text-align: right; font-weight: 600;">{customer_data.get('invoice_date', 'N/A')}</td></tr>
+                                <tr><td style="padding: 8px 0; color: #666;">Payment Terms:</td><td style="padding: 8px 0; text-align: right; font-weight: 600;">Net {customer_data.get('payment_terms_days', 30)} days</td></tr>
+                                <tr><td style="padding: 8px 0; color: #666;">Days Overdue:</td><td style="padding: 8px 0; text-align: right; font-weight: 600; color: #e32526;">{customer_data.get('days_overdue', 0)} days</td></tr>
+                                <tr style="border-top: 2px solid #e32526;"><td style="padding: 12px 0; font-size: 18px; font-weight: 600;">Amount Due:</td><td style="padding: 12px 0; text-align: right; font-size: 24px; font-weight: 700; color: #e32526;">{fmt_currency(customer_data.get('outstanding_balance', 0))}</td></tr>
+                            </table>
+                        </div>
+                        
+                        <p style="font-size: 16px; line-height: 1.6;">Please remit payment at your earliest convenience to avoid any service interruption or late fees.</p>
+                        <p style="font-size: 16px; line-height: 1.6;">If you have already sent payment, please disregard this notice. For questions about your account, please contact our accounts receivable team.</p>
+                        
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
+                            <p style="margin: 0; font-size: 14px; color: #666;"><strong>Payment Options:</strong></p>
+                            <p style="margin: 8px 0 0; font-size: 14px; color: #666;">• Wire Transfer • Check • ACH • Credit Card</p>
+                        </div>
+                        
+                        <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">Thank you for your prompt attention to this matter.</p>
+                        <p style="font-size: 16px; line-height: 1.6; margin: 0;">Best regards,<br><strong>PepsiCo Accounts Receivable Team</strong></p>
+                    </div>
+                    <div style="background: #f5f6fb; padding: 20px 30px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 8px 8px;">
+                        <p style="margin: 0;">This is an automated reminder from PepsiCo Sales Analytics</p>
+                        <p style="margin: 8px 0 0; font-size: 12px;">Need help? Contact us at <a href="mailto:ar@pepsico.com">ar@pepsico.com</a></p>

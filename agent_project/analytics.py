@@ -427,3 +427,36 @@ def customer_top_products(customer_id: int, start_date: str, end_date: str, limi
     ORDER BY revenue DESC
     """
     return run_sql(q)
+
+
+def get_unpaid_invoices(days_overdue: int = 0, limit: int = 100) -> pd.DataFrame:
+    """
+    Retrieve customers with unpaid invoices including contact info and salesperson details.
+    """
+    query = f"""
+    SELECT TOP {limit}
+        c.CustomerID,
+        c.CustomerName,
+        c.PhoneNumber,
+        c.PaymentDays,
+        contact.EmailAddress AS ContactEmail,
+        contact.FullName AS ContactName,
+        ct.InvoiceID,
+        ct.TransactionDate,
+        ct.TransactionAmount,
+        ct.OutstandingBalance,
+        DATEDIFF(DAY, DATEADD(DAY, c.PaymentDays, ct.TransactionDate), GETDATE()) AS DaysOverdue,
+        inv.InvoiceDate,
+        salesperson.FullName AS SalespersonName,
+        salesperson.EmailAddress AS SalespersonEmail
+    FROM [Sales].[CustomerTransactions] ct
+    INNER JOIN [Sales].[Customers] c ON ct.CustomerID = c.CustomerID
+    LEFT JOIN [Application].[People] contact ON c.PrimaryContactPersonID = contact.PersonID
+    LEFT JOIN [Sales].[Invoices] inv ON ct.InvoiceID = inv.InvoiceID
+    LEFT JOIN [Application].[People] salesperson ON inv.SalespersonPersonID = salesperson.PersonID
+    WHERE ct.OutstandingBalance > 0
+        AND ct.IsFinalized = 1
+        AND DATEDIFF(DAY, DATEADD(DAY, c.PaymentDays, ct.TransactionDate), GETDATE()) >= {days_overdue}
+    ORDER BY ct.OutstandingBalance DESC, ct.TransactionDate ASC;
+    """
+    return run_sql(query)
