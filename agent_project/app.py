@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 import os
+from datetime import datetime
 from analytics import (
     compute_roi, plot_timeseries, plot_bar_chart,
     top_customers, top_products, salesperson_performance, customer_segmentation,
@@ -25,6 +26,38 @@ class AskRequest(BaseModel):
     question: str
     start_date: Optional[str] = '2015-01-01'
     end_date: Optional[str] = '2016-12-31'
+
+
+def describe_forecast_rows(rows):
+    if not rows:
+        return "No forecast insights available."
+
+    def fmt_month(value):
+        if not value:
+            return "N/A"
+        try:
+            return datetime.fromisoformat(str(value)).strftime('%b %Y')
+        except ValueError:
+            try:
+                return datetime.strptime(str(value), '%Y-%m').strftime('%b %Y')
+            except Exception:
+                return str(value)
+
+    units = [float(r['units']) for r in rows if r.get('units') is not None]
+    if not units:
+        return "Forecast values unavailable."
+    first = rows[0]
+    last = rows[-1]
+    peak = max(rows, key=lambda r: r.get('units', 0))
+    trough = min(rows, key=lambda r: r.get('units', 0))
+    delta = last['units'] - first['units']
+    trend = 'rise' if delta >= 0 else 'decline'
+    return (
+        f"Demand is projected to {trend} from {first['units']:,.0f} units in {fmt_month(first['month'])} "
+        f"to {last['units']:,.0f} by {fmt_month(last['month'])}. "
+        f"Peak demand hits {peak['units']:,.0f} units in {fmt_month(peak['month'])}, "
+        f"while the weakest month sits at {trough['units']:,.0f}."
+    )
 
 
 @api_router.get('/roi')
@@ -233,11 +266,11 @@ def api_demand_forecast(stock_item_id: Optional[int] = None,
                 month = month.date().isoformat()
             history_for_llm.append({'month': month, 'units': row['units']})
 
+        explanation = result.get('explanation', '')
         try:
             llm_output = forecast_with_llm(history_for_llm, months_ahead, result['stock_item']['name'])
             result['forecast'] = [{'month': f['month'], 'units': f['units']} for f in llm_output.get('forecast', [])]
-            if llm_output.get('explanation'):
-                result['explanation'] = llm_output['explanation']
+            explanation = llm_output.get('explanation', explanation)
         except Exception:
             pass
 
@@ -245,6 +278,9 @@ def api_demand_forecast(stock_item_id: Optional[int] = None,
             for row in result[section]:
                 if hasattr(row['month'], 'isoformat'):
                     row['month'] = row['month'].date().isoformat()
+        if not explanation:
+            explanation = describe_forecast_rows(result['forecast'])
+        result['explanation'] = explanation
         return JSONResponse(result)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

@@ -156,7 +156,7 @@ History:
 Return strictly JSON with the structure:
 {{
   "forecast": [{{"month":"YYYY-MM","units":1234}}, ... exactly {months_ahead} entries],
-  "explanation": "Short explanation (20-40 words) describing the drivers behind the forecast"
+  "explanation": "Write 2-3 sentences (40-80 words) referencing specific forecast values, seasonal drivers, and risks/opportunities. Mention at least two concrete numbers from the forecast."
 }}
 Months must be consecutive calendar months immediately following the latest history month."""
 
