@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WideWorldImporters Database Schema</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+            max-width: 95vw;
+            max-height: 85vh;
+            overflow: auto;
+        }
+        .diagram {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .info {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .info ul {
+            margin-left: 20px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WideWorldImporters Database Schema</h1>
+        <p>Entity Relationship Diagram</p>
+    </div>
+    
+    <div class="container">
+        <div class="diagram" id="diagramContainer">
+            <!-- SVG will be loaded here -->
+        </div>
+        
+        <div class="info">
+            <h3>📊 Key Database Components</h3>
+            <ul>
+                <li><strong>People</strong> - Central hub table for users and editors (referenced by most tables via LastEditedBy)</li>
+                <li><strong>Customers & Orders</strong> - Main sales workflow (Customers → Orders → OrderLines → Invoices)</li>
+                <li><strong>Suppliers & Purchasing</strong> - Procurement workflow (Suppliers → PurchaseOrders → PurchaseOrderLines)</li>
+                <li><strong>Warehouse</strong> - Stock management (StockItems, Colors, PackageTypes, StockGroups)</li>
+                <li><strong>Application</strong> - Reference data (Cities, Countries, DeliveryMethods, PaymentMethods, TransactionTypes)</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Embed SVG directly
+        const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" viewBox="0 0 2100 3700"><style>text{font-family:Times,serif;font-size:14px}g.node polygon{fill:lightblue;stroke:black}g.edge path{stroke:black;fill:none}</style><g id="graph0" class="graph"><title>WideWorldImporters</title></g></svg>`;
+        
+        fetch('schema.svg')
+            .then(response => response.text())
+            .then(svg => {
+                document.getElementById('diagramContainer').innerHTML = svg;
+            })
+            .catch(err => {
+                console.log('Could not fetch SVG, using embedded version');
+                // Fallback: create a simple text message
+                document.getElementById('diagramContainer').innerHTML = 
+                    '<div style="padding: 20px; text-align: center; color: #666;">' +
+                    '<p>Database Schema Diagram (60+ tables)</p>' +
+                    '<p style="font-size: 0.9em;">Full diagram SVG file: schema.svg</p>' +
+                    '</div>';
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WideWorldImporters Database Schema</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: rgba(0,0,0,0.1);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        .header p {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+        .diagram-container {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        svg {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 100%;
+            height: auto;
+        }
+        .footer {
+            background: rgba(0,0,0,0.15);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 0.85em;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .footer a {
+            color: #fff;
+            text-decoration: underline;
+        }
+        .info-box {
+            background: rgba(255,255,255,0.95);
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin: 0 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🗄️ WideWorldImporters Database Schema</h1>
+        <p>Entity Relationship Diagram - 60+ Tables</p>
+    </div>
+    
+    <div class="diagram-container" id="diagramContainer">
+        <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" viewBox="0 0 2104 3780">
+            <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 3775.75)">
+                <title>WideWorldImporters</title>
+                <polygon fill="white" stroke="none" points="-4,4 -4,-3775.75 2099.62,-3775.75 2099.62,4 -4,4"/>
+                <!-- Loading SVG content... -->
+                <text x="1050" y="1890" text-anchor="middle" font-size="24" fill="#999">Loading diagram...</text>
+            </g>
+        </svg>
+    </div>
+    
+    <div class="footer">
+        <div class="info-box">
+            <strong>📊 Key Tables:</strong> People (hub) • Customers/Orders/Invoices (sales) • Suppliers/PurchaseOrders (procurement) • Warehouse/StockItems (inventory) • Application/* (reference data)
+        </div>
+    </div>
+
+    <script>
+        // Fetch and inject SVG
+        fetch('schema.svg')
+            .then(response => response.text())
+            .then(svgText => {
+                document.getElementById('diagramContainer').innerHTML = svgText;
+                // Style the SVG
+                const svg = document.querySelector('svg');
+                if (svg) {
+                    svg.style.background = 'white';
+                    svg.style.borderRadius = '8px';
+                    svg.style.boxShadow = '0 10px 40px rgba(0,0,0,0.3)';
+                    svg.style.maxWidth = '100%';
+                    svg.style.height = 'auto';
+                }
+            })
+            .catch(err => {
+                console.error('Error loading SVG:', err);
+                document.getElementById('diagramContainer').innerHTML = 
+                    '<div style="text-align:center; color:white; padding:40px;">' +
+                    '<p style="font-size:18px; margin-bottom:10px;">📊 Database Schema Diagram</p>' +
+                    '<p>Showing 60+ tables with relationships</p>' +
+                    '<p style="margin-top:20px; font-size:12px; opacity:0.8;">Make sure schema.svg is in the same directory</p>' +
+                    '</div>';
+            });
+    </script>
+</body>
+</html>

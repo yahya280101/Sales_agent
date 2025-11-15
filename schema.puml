@@ -1,0 +1,762 @@
+@startuml
+hide circle
+skinparam linetype ortho
+entity "Application_Cities" {
+  *CityID : int
+  CityName : nvarchar
+  StateProvinceID : int
+  Location : geography (NULL)
+  LatestRecordedPopulation : bigint (NULL)
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_Cities_Archive" {
+  CityID : int
+  CityName : nvarchar
+  StateProvinceID : int
+  Location : geography (NULL)
+  LatestRecordedPopulation : bigint (NULL)
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_Countries" {
+  *CountryID : int
+  CountryName : nvarchar
+  FormalName : nvarchar
+  IsoAlpha3Code : nvarchar (NULL)
+  IsoNumericCode : int (NULL)
+  CountryType : nvarchar (NULL)
+  LatestRecordedPopulation : bigint (NULL)
+  Continent : nvarchar
+  Region : nvarchar
+  Subregion : nvarchar
+  Border : geography (NULL)
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_Countries_Archive" {
+  CountryID : int
+  CountryName : nvarchar
+  FormalName : nvarchar
+  IsoAlpha3Code : nvarchar (NULL)
+  IsoNumericCode : int (NULL)
+  CountryType : nvarchar (NULL)
+  LatestRecordedPopulation : bigint (NULL)
+  Continent : nvarchar
+  Region : nvarchar
+  Subregion : nvarchar
+  Border : geography (NULL)
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_DeliveryMethods" {
+  *DeliveryMethodID : int
+  DeliveryMethodName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_DeliveryMethods_Archive" {
+  DeliveryMethodID : int
+  DeliveryMethodName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_HackathonMetadata" {
+  *MetadataID : int
+  ParticipantID : int
+  ParticipantName : nvarchar
+  DatabaseName : nvarchar
+  CreatedDate : datetime2
+}
+entity "Application_PaymentMethods" {
+  *PaymentMethodID : int
+  PaymentMethodName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_PaymentMethods_Archive" {
+  PaymentMethodID : int
+  PaymentMethodName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_People" {
+  *PersonID : int
+  FullName : nvarchar
+  PreferredName : nvarchar
+  SearchName : nvarchar
+  IsPermittedToLogon : bit
+  LogonName : nvarchar (NULL)
+  IsExternalLogonProvider : bit
+  HashedPassword : varbinary (NULL)
+  IsSystemUser : bit
+  IsEmployee : bit
+  IsSalesperson : bit
+  UserPreferences : nvarchar (NULL)
+  PhoneNumber : nvarchar (NULL)
+  FaxNumber : nvarchar (NULL)
+  EmailAddress : nvarchar (NULL)
+  Photo : varbinary (NULL)
+  CustomFields : nvarchar (NULL)
+  OtherLanguages : nvarchar (NULL)
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_People_Archive" {
+  PersonID : int
+  FullName : nvarchar
+  PreferredName : nvarchar
+  SearchName : nvarchar
+  IsPermittedToLogon : bit
+  LogonName : nvarchar (NULL)
+  IsExternalLogonProvider : bit
+  HashedPassword : varbinary (NULL)
+  IsSystemUser : bit
+  IsEmployee : bit
+  IsSalesperson : bit
+  UserPreferences : nvarchar (NULL)
+  PhoneNumber : nvarchar (NULL)
+  FaxNumber : nvarchar (NULL)
+  EmailAddress : nvarchar (NULL)
+  Photo : varbinary (NULL)
+  CustomFields : nvarchar (NULL)
+  OtherLanguages : nvarchar (NULL)
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_StateProvinces" {
+  *StateProvinceID : int
+  StateProvinceCode : nvarchar
+  StateProvinceName : nvarchar
+  CountryID : int
+  SalesTerritory : nvarchar
+  Border : geography (NULL)
+  LatestRecordedPopulation : bigint (NULL)
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_StateProvinces_Archive" {
+  StateProvinceID : int
+  StateProvinceCode : nvarchar
+  StateProvinceName : nvarchar
+  CountryID : int
+  SalesTerritory : nvarchar
+  Border : geography (NULL)
+  LatestRecordedPopulation : bigint (NULL)
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_SystemParameters" {
+  *SystemParameterID : int
+  DeliveryAddressLine1 : nvarchar
+  DeliveryAddressLine2 : nvarchar (NULL)
+  DeliveryCityID : int
+  DeliveryPostalCode : nvarchar
+  DeliveryLocation : geography
+  PostalAddressLine1 : nvarchar
+  PostalAddressLine2 : nvarchar (NULL)
+  PostalCityID : int
+  PostalPostalCode : nvarchar
+  ApplicationSettings : nvarchar
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Application_TransactionTypes" {
+  *TransactionTypeID : int
+  TransactionTypeName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Application_TransactionTypes_Archive" {
+  TransactionTypeID : int
+  TransactionTypeName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Purchasing_PurchaseOrderLines" {
+  *PurchaseOrderLineID : int
+  PurchaseOrderID : int
+  StockItemID : int
+  OrderedOuters : int
+  Description : nvarchar
+  ReceivedOuters : int
+  PackageTypeID : int
+  ExpectedUnitPricePerOuter : decimal (NULL)
+  LastReceiptDate : date (NULL)
+  IsOrderLineFinalized : bit
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Purchasing_PurchaseOrders" {
+  *PurchaseOrderID : int
+  SupplierID : int
+  OrderDate : date
+  DeliveryMethodID : int
+  ContactPersonID : int
+  ExpectedDeliveryDate : date (NULL)
+  SupplierReference : nvarchar (NULL)
+  IsOrderFinalized : bit
+  Comments : nvarchar (NULL)
+  InternalComments : nvarchar (NULL)
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Purchasing_SupplierCategories" {
+  *SupplierCategoryID : int
+  SupplierCategoryName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Purchasing_SupplierCategories_Archive" {
+  SupplierCategoryID : int
+  SupplierCategoryName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Purchasing_Suppliers" {
+  *SupplierID : int
+  SupplierName : nvarchar
+  SupplierCategoryID : int
+  PrimaryContactPersonID : int
+  AlternateContactPersonID : int
+  DeliveryMethodID : int (NULL)
+  DeliveryCityID : int
+  PostalCityID : int
+  SupplierReference : nvarchar (NULL)
+  BankAccountName : nvarchar (NULL)
+  BankAccountBranch : nvarchar (NULL)
+  BankAccountCode : nvarchar (NULL)
+  BankAccountNumber : nvarchar (NULL)
+  BankInternationalCode : nvarchar (NULL)
+  PaymentDays : int
+  InternalComments : nvarchar (NULL)
+  PhoneNumber : nvarchar
+  FaxNumber : nvarchar
+  WebsiteURL : nvarchar
+  DeliveryAddressLine1 : nvarchar
+  DeliveryAddressLine2 : nvarchar (NULL)
+  DeliveryPostalCode : nvarchar
+  DeliveryLocation : geography (NULL)
+  PostalAddressLine1 : nvarchar
+  PostalAddressLine2 : nvarchar (NULL)
+  PostalPostalCode : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Purchasing_Suppliers_Archive" {
+  SupplierID : int
+  SupplierName : nvarchar
+  SupplierCategoryID : int
+  PrimaryContactPersonID : int
+  AlternateContactPersonID : int
+  DeliveryMethodID : int (NULL)
+  DeliveryCityID : int
+  PostalCityID : int
+  SupplierReference : nvarchar (NULL)
+  BankAccountName : nvarchar (NULL)
+  BankAccountBranch : nvarchar (NULL)
+  BankAccountCode : nvarchar (NULL)
+  BankAccountNumber : nvarchar (NULL)
+  BankInternationalCode : nvarchar (NULL)
+  PaymentDays : int
+  InternalComments : nvarchar (NULL)
+  PhoneNumber : nvarchar
+  FaxNumber : nvarchar
+  WebsiteURL : nvarchar
+  DeliveryAddressLine1 : nvarchar
+  DeliveryAddressLine2 : nvarchar (NULL)
+  DeliveryPostalCode : nvarchar
+  DeliveryLocation : geography (NULL)
+  PostalAddressLine1 : nvarchar
+  PostalAddressLine2 : nvarchar (NULL)
+  PostalPostalCode : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Purchasing_SupplierTransactions" {
+  *SupplierTransactionID : int
+  SupplierID : int
+  TransactionTypeID : int
+  PurchaseOrderID : int (NULL)
+  PaymentMethodID : int (NULL)
+  SupplierInvoiceNumber : nvarchar (NULL)
+  TransactionDate : date
+  AmountExcludingTax : decimal
+  TaxAmount : decimal
+  TransactionAmount : decimal
+  OutstandingBalance : decimal
+  FinalizationDate : date (NULL)
+  IsFinalized : bit (NULL)
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Sales_BuyingGroups" {
+  *BuyingGroupID : int
+  BuyingGroupName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Sales_BuyingGroups_Archive" {
+  BuyingGroupID : int
+  BuyingGroupName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Sales_CustomerCategories" {
+  *CustomerCategoryID : int
+  CustomerCategoryName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Sales_CustomerCategories_Archive" {
+  CustomerCategoryID : int
+  CustomerCategoryName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Sales_Customers" {
+  *CustomerID : int
+  CustomerName : nvarchar
+  BillToCustomerID : int
+  CustomerCategoryID : int
+  BuyingGroupID : int (NULL)
+  PrimaryContactPersonID : int
+  AlternateContactPersonID : int (NULL)
+  DeliveryMethodID : int
+  DeliveryCityID : int
+  PostalCityID : int
+  CreditLimit : decimal (NULL)
+  AccountOpenedDate : date
+  StandardDiscountPercentage : decimal
+  IsStatementSent : bit
+  IsOnCreditHold : bit
+  PaymentDays : int
+  PhoneNumber : nvarchar
+  FaxNumber : nvarchar
+  DeliveryRun : nvarchar (NULL)
+  RunPosition : nvarchar (NULL)
+  WebsiteURL : nvarchar
+  DeliveryAddressLine1 : nvarchar
+  DeliveryAddressLine2 : nvarchar (NULL)
+  DeliveryPostalCode : nvarchar
+  DeliveryLocation : geography (NULL)
+  PostalAddressLine1 : nvarchar
+  PostalAddressLine2 : nvarchar (NULL)
+  PostalPostalCode : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Sales_Customers_Archive" {
+  CustomerID : int
+  CustomerName : nvarchar
+  BillToCustomerID : int
+  CustomerCategoryID : int
+  BuyingGroupID : int (NULL)
+  PrimaryContactPersonID : int
+  AlternateContactPersonID : int (NULL)
+  DeliveryMethodID : int
+  DeliveryCityID : int
+  PostalCityID : int
+  CreditLimit : decimal (NULL)
+  AccountOpenedDate : date
+  StandardDiscountPercentage : decimal
+  IsStatementSent : bit
+  IsOnCreditHold : bit
+  PaymentDays : int
+  PhoneNumber : nvarchar
+  FaxNumber : nvarchar
+  DeliveryRun : nvarchar (NULL)
+  RunPosition : nvarchar (NULL)
+  WebsiteURL : nvarchar
+  DeliveryAddressLine1 : nvarchar
+  DeliveryAddressLine2 : nvarchar (NULL)
+  DeliveryPostalCode : nvarchar
+  DeliveryLocation : geography (NULL)
+  PostalAddressLine1 : nvarchar
+  PostalAddressLine2 : nvarchar (NULL)
+  PostalPostalCode : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Sales_CustomerTransactions" {
+  *CustomerTransactionID : int
+  CustomerID : int
+  TransactionTypeID : int
+  InvoiceID : int (NULL)
+  PaymentMethodID : int (NULL)
+  TransactionDate : date
+  AmountExcludingTax : decimal
+  TaxAmount : decimal
+  TransactionAmount : decimal
+  OutstandingBalance : decimal
+  FinalizationDate : date (NULL)
+  IsFinalized : bit (NULL)
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Sales_InvoiceLines" {
+  *InvoiceLineID : int
+  InvoiceID : int
+  StockItemID : int
+  Description : nvarchar
+  PackageTypeID : int
+  Quantity : int
+  UnitPrice : decimal (NULL)
+  TaxRate : decimal
+  TaxAmount : decimal
+  LineProfit : decimal
+  ExtendedPrice : decimal
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Sales_Invoices" {
+  *InvoiceID : int
+  CustomerID : int
+  BillToCustomerID : int
+  OrderID : int (NULL)
+  DeliveryMethodID : int
+  ContactPersonID : int
+  AccountsPersonID : int
+  SalespersonPersonID : int
+  PackedByPersonID : int
+  InvoiceDate : date
+  CustomerPurchaseOrderNumber : nvarchar (NULL)
+  IsCreditNote : bit
+  CreditNoteReason : nvarchar (NULL)
+  Comments : nvarchar (NULL)
+  DeliveryInstructions : nvarchar (NULL)
+  InternalComments : nvarchar (NULL)
+  TotalDryItems : int
+  TotalChillerItems : int
+  DeliveryRun : nvarchar (NULL)
+  RunPosition : nvarchar (NULL)
+  ReturnedDeliveryData : nvarchar (NULL)
+  ConfirmedDeliveryTime : datetime2 (NULL)
+  ConfirmedReceivedBy : nvarchar (NULL)
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Sales_OrderLines" {
+  *OrderLineID : int
+  OrderID : int
+  StockItemID : int
+  Description : nvarchar
+  PackageTypeID : int
+  Quantity : int
+  UnitPrice : decimal (NULL)
+  TaxRate : decimal
+  PickedQuantity : int
+  PickingCompletedWhen : datetime2 (NULL)
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Sales_Orders" {
+  *OrderID : int
+  CustomerID : int
+  SalespersonPersonID : int
+  PickedByPersonID : int (NULL)
+  ContactPersonID : int
+  BackorderOrderID : int (NULL)
+  OrderDate : date
+  ExpectedDeliveryDate : date
+  CustomerPurchaseOrderNumber : nvarchar (NULL)
+  IsUndersupplyBackordered : bit
+  Comments : nvarchar (NULL)
+  DeliveryInstructions : nvarchar (NULL)
+  InternalComments : nvarchar (NULL)
+  PickingCompletedWhen : datetime2 (NULL)
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Sales_SpecialDeals" {
+  *SpecialDealID : int
+  StockItemID : int (NULL)
+  CustomerID : int (NULL)
+  BuyingGroupID : int (NULL)
+  CustomerCategoryID : int (NULL)
+  StockGroupID : int (NULL)
+  DealDescription : nvarchar
+  StartDate : date
+  EndDate : date
+  DiscountAmount : decimal (NULL)
+  DiscountPercentage : decimal (NULL)
+  UnitPrice : decimal (NULL)
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Warehouse_ColdRoomTemperatures" {
+  *ColdRoomTemperatureID : bigint
+  ColdRoomSensorNumber : int
+  RecordedWhen : datetime2
+  Temperature : decimal
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_ColdRoomTemperatures_Archive" {
+  ColdRoomTemperatureID : bigint
+  ColdRoomSensorNumber : int
+  RecordedWhen : datetime2
+  Temperature : decimal
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_Colors" {
+  *ColorID : int
+  ColorName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_Colors_Archive" {
+  ColorID : int
+  ColorName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_PackageTypes" {
+  *PackageTypeID : int
+  PackageTypeName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_PackageTypes_Archive" {
+  PackageTypeID : int
+  PackageTypeName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_StockGroups" {
+  *StockGroupID : int
+  StockGroupName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_StockGroups_Archive" {
+  StockGroupID : int
+  StockGroupName : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_StockItemHoldings" {
+  *StockItemID : int
+  QuantityOnHand : int
+  BinLocation : nvarchar
+  LastStocktakeQuantity : int
+  LastCostPrice : decimal
+  ReorderLevel : int
+  TargetStockLevel : int
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Warehouse_StockItems" {
+  *StockItemID : int
+  StockItemName : nvarchar
+  SupplierID : int
+  ColorID : int (NULL)
+  UnitPackageID : int
+  OuterPackageID : int
+  Brand : nvarchar (NULL)
+  Size : nvarchar (NULL)
+  LeadTimeDays : int
+  QuantityPerOuter : int
+  IsChillerStock : bit
+  Barcode : nvarchar (NULL)
+  TaxRate : decimal
+  UnitPrice : decimal
+  RecommendedRetailPrice : decimal (NULL)
+  TypicalWeightPerUnit : decimal
+  MarketingComments : nvarchar (NULL)
+  InternalComments : nvarchar (NULL)
+  Photo : varbinary (NULL)
+  CustomFields : nvarchar (NULL)
+  Tags : nvarchar (NULL)
+  SearchDetails : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_StockItems_Archive" {
+  StockItemID : int
+  StockItemName : nvarchar
+  SupplierID : int
+  ColorID : int (NULL)
+  UnitPackageID : int
+  OuterPackageID : int
+  Brand : nvarchar (NULL)
+  Size : nvarchar (NULL)
+  LeadTimeDays : int
+  QuantityPerOuter : int
+  IsChillerStock : bit
+  Barcode : nvarchar (NULL)
+  TaxRate : decimal
+  UnitPrice : decimal
+  RecommendedRetailPrice : decimal (NULL)
+  TypicalWeightPerUnit : decimal
+  MarketingComments : nvarchar (NULL)
+  InternalComments : nvarchar (NULL)
+  Photo : varbinary (NULL)
+  CustomFields : nvarchar (NULL)
+  Tags : nvarchar (NULL)
+  SearchDetails : nvarchar
+  LastEditedBy : int
+  ValidFrom : datetime2
+  ValidTo : datetime2
+}
+entity "Warehouse_StockItemStockGroups" {
+  *StockItemStockGroupID : int
+  StockItemID : int
+  StockGroupID : int
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Warehouse_StockItemTransactions" {
+  *StockItemTransactionID : int
+  StockItemID : int
+  TransactionTypeID : int
+  CustomerID : int (NULL)
+  InvoiceID : int (NULL)
+  SupplierID : int (NULL)
+  PurchaseOrderID : int (NULL)
+  TransactionOccurredWhen : datetime2
+  Quantity : decimal
+  LastEditedBy : int
+  LastEditedWhen : datetime2
+}
+entity "Warehouse_VehicleTemperatures" {
+  *VehicleTemperatureID : bigint
+  VehicleRegistration : nvarchar
+  ChillerSensorNumber : int
+  RecordedWhen : datetime2
+  Temperature : decimal
+  FullSensorData : nvarchar (NULL)
+  IsCompressed : bit
+  CompressedSensorData : varbinary (NULL)
+}
+BuyingGroups }o--|| People : FK_Sales_BuyingGroups_Application_People
+Cities }o--|| People : FK_Application_Cities_Application_People
+Cities }o--|| StateProvinces : FK_Application_Cities_StateProvinceID_Application_StateProvinces
+Colors }o--|| People : FK_Warehouse_Colors_Application_People
+Countries }o--|| People : FK_Application_Countries_Application_People
+CustomerCategories }o--|| People : FK_Sales_CustomerCategories_Application_People
+Customers }o--|| People : FK_Sales_Customers_PrimaryContactPersonID_Application_People
+Customers }o--|| People : FK_Sales_Customers_AlternateContactPersonID_Application_People
+Customers }o--|| People : FK_Sales_Customers_Application_People
+Customers }o--|| Customers : FK_Sales_Customers_BillToCustomerID_Sales_Customers
+Customers }o--|| Cities : FK_Sales_Customers_DeliveryCityID_Application_Cities
+Customers }o--|| Cities : FK_Sales_Customers_PostalCityID_Application_Cities
+Customers }o--|| DeliveryMethods : FK_Sales_Customers_DeliveryMethodID_Application_DeliveryMethods
+Customers }o--|| BuyingGroups : FK_Sales_Customers_BuyingGroupID_Sales_BuyingGroups
+Customers }o--|| CustomerCategories : FK_Sales_Customers_CustomerCategoryID_Sales_CustomerCategories
+CustomerTransactions }o--|| Invoices : FK_Sales_CustomerTransactions_InvoiceID_Sales_Invoices
+CustomerTransactions }o--|| TransactionTypes : FK_Sales_CustomerTransactions_TransactionTypeID_Application_TransactionTypes
+CustomerTransactions }o--|| PaymentMethods : FK_Sales_CustomerTransactions_PaymentMethodID_Application_PaymentMethods
+CustomerTransactions }o--|| Customers : FK_Sales_CustomerTransactions_CustomerID_Sales_Customers
+CustomerTransactions }o--|| People : FK_Sales_CustomerTransactions_Application_People
+DeliveryMethods }o--|| People : FK_Application_DeliveryMethods_Application_People
+InvoiceLines }o--|| People : FK_Sales_InvoiceLines_Application_People
+InvoiceLines }o--|| PackageTypes : FK_Sales_InvoiceLines_PackageTypeID_Warehouse_PackageTypes
+InvoiceLines }o--|| StockItems : FK_Sales_InvoiceLines_StockItemID_Warehouse_StockItems
+InvoiceLines }o--|| Invoices : FK_Sales_InvoiceLines_InvoiceID_Sales_Invoices
+Invoices }o--|| DeliveryMethods : FK_Sales_Invoices_DeliveryMethodID_Application_DeliveryMethods
+Invoices }o--|| Customers : FK_Sales_Invoices_CustomerID_Sales_Customers
+Invoices }o--|| Customers : FK_Sales_Invoices_BillToCustomerID_Sales_Customers
+Invoices }o--|| Orders : FK_Sales_Invoices_OrderID_Sales_Orders
+Invoices }o--|| People : FK_Sales_Invoices_SalespersonPersonID_Application_People
+Invoices }o--|| People : FK_Sales_Invoices_PackedByPersonID_Application_People
+Invoices }o--|| People : FK_Sales_Invoices_Application_People
+Invoices }o--|| People : FK_Sales_Invoices_ContactPersonID_Application_People
+Invoices }o--|| People : FK_Sales_Invoices_AccountsPersonID_Application_People
+OrderLines }o--|| StockItems : FK_Sales_OrderLines_StockItemID_Warehouse_StockItems
+OrderLines }o--|| People : FK_Sales_OrderLines_Application_People
+OrderLines }o--|| Orders : FK_Sales_OrderLines_OrderID_Sales_Orders
+OrderLines }o--|| PackageTypes : FK_Sales_OrderLines_PackageTypeID_Warehouse_PackageTypes
+Orders }o--|| Orders : FK_Sales_Orders_BackorderOrderID_Sales_Orders
+Orders }o--|| Customers : FK_Sales_Orders_CustomerID_Sales_Customers
+Orders }o--|| People : FK_Sales_Orders_SalespersonPersonID_Application_People
+Orders }o--|| People : FK_Sales_Orders_PickedByPersonID_Application_People
+Orders }o--|| People : FK_Sales_Orders_ContactPersonID_Application_People
+Orders }o--|| People : FK_Sales_Orders_Application_People
+PackageTypes }o--|| People : FK_Warehouse_PackageTypes_Application_People
+PaymentMethods }o--|| People : FK_Application_PaymentMethods_Application_People
+People }o--|| People : FK_Application_People_Application_People
+PurchaseOrderLines }o--|| People : FK_Purchasing_PurchaseOrderLines_Application_People
+PurchaseOrderLines }o--|| StockItems : FK_Purchasing_PurchaseOrderLines_StockItemID_Warehouse_StockItems
+PurchaseOrderLines }o--|| PurchaseOrders : FK_Purchasing_PurchaseOrderLines_PurchaseOrderID_Purchasing_PurchaseOrders
+PurchaseOrderLines }o--|| PackageTypes : FK_Purchasing_PurchaseOrderLines_PackageTypeID_Warehouse_PackageTypes
+PurchaseOrders }o--|| Suppliers : FK_Purchasing_PurchaseOrders_SupplierID_Purchasing_Suppliers
+PurchaseOrders }o--|| People : FK_Purchasing_PurchaseOrders_ContactPersonID_Application_People
+PurchaseOrders }o--|| People : FK_Purchasing_PurchaseOrders_Application_People
+PurchaseOrders }o--|| DeliveryMethods : FK_Purchasing_PurchaseOrders_DeliveryMethodID_Application_DeliveryMethods
+SpecialDeals }o--|| CustomerCategories : FK_Sales_SpecialDeals_CustomerCategoryID_Sales_CustomerCategories
+SpecialDeals }o--|| BuyingGroups : FK_Sales_SpecialDeals_BuyingGroupID_Sales_BuyingGroups
+SpecialDeals }o--|| StockGroups : FK_Sales_SpecialDeals_StockGroupID_Warehouse_StockGroups
+SpecialDeals }o--|| StockItems : FK_Sales_SpecialDeals_StockItemID_Warehouse_StockItems
+SpecialDeals }o--|| People : FK_Sales_SpecialDeals_Application_People
+SpecialDeals }o--|| Customers : FK_Sales_SpecialDeals_CustomerID_Sales_Customers
+StateProvinces }o--|| Countries : FK_Application_StateProvinces_CountryID_Application_Countries
+StateProvinces }o--|| People : FK_Application_StateProvinces_Application_People
+StockGroups }o--|| People : FK_Warehouse_StockGroups_Application_People
+StockItemHoldings }o--|| People : FK_Warehouse_StockItemHoldings_Application_People
+StockItemHoldings }o--|| StockItems : PKFK_Warehouse_StockItemHoldings_StockItemID_Warehouse_StockItems
+StockItems }o--|| People : FK_Warehouse_StockItems_Application_People
+StockItems }o--|| Suppliers : FK_Warehouse_StockItems_SupplierID_Purchasing_Suppliers
+StockItems }o--|| Colors : FK_Warehouse_StockItems_ColorID_Warehouse_Colors
+StockItems }o--|| PackageTypes : FK_Warehouse_StockItems_UnitPackageID_Warehouse_PackageTypes
+StockItems }o--|| PackageTypes : FK_Warehouse_StockItems_OuterPackageID_Warehouse_PackageTypes
+StockItemStockGroups }o--|| StockGroups : FK_Warehouse_StockItemStockGroups_StockGroupID_Warehouse_StockGroups
+StockItemStockGroups }o--|| People : FK_Warehouse_StockItemStockGroups_Application_People
+StockItemStockGroups }o--|| StockItems : FK_Warehouse_StockItemStockGroups_StockItemID_Warehouse_StockItems
+StockItemTransactions }o--|| People : FK_Warehouse_StockItemTransactions_Application_People
+StockItemTransactions }o--|| PurchaseOrders : FK_Warehouse_StockItemTransactions_PurchaseOrderID_Purchasing_PurchaseOrders
+StockItemTransactions }o--|| Customers : FK_Warehouse_StockItemTransactions_CustomerID_Sales_Customers
+StockItemTransactions }o--|| Suppliers : FK_Warehouse_StockItemTransactions_SupplierID_Purchasing_Suppliers
+StockItemTransactions }o--|| StockItems : FK_Warehouse_StockItemTransactions_StockItemID_Warehouse_StockItems
+StockItemTransactions }o--|| TransactionTypes : FK_Warehouse_StockItemTransactions_TransactionTypeID_Application_TransactionTypes
+StockItemTransactions }o--|| Invoices : FK_Warehouse_StockItemTransactions_InvoiceID_Sales_Invoices
+SupplierCategories }o--|| People : FK_Purchasing_SupplierCategories_Application_People
+Suppliers }o--|| DeliveryMethods : FK_Purchasing_Suppliers_DeliveryMethodID_Application_DeliveryMethods
+Suppliers }o--|| People : FK_Purchasing_Suppliers_PrimaryContactPersonID_Application_People
+Suppliers }o--|| People : FK_Purchasing_Suppliers_AlternateContactPersonID_Application_People
+Suppliers }o--|| People : FK_Purchasing_Suppliers_Application_People
+Suppliers }o--|| Cities : FK_Purchasing_Suppliers_DeliveryCityID_Application_Cities
+Suppliers }o--|| Cities : FK_Purchasing_Suppliers_PostalCityID_Application_Cities
+Suppliers }o--|| SupplierCategories : FK_Purchasing_Suppliers_SupplierCategoryID_Purchasing_SupplierCategories
+SupplierTransactions }o--|| TransactionTypes : FK_Purchasing_SupplierTransactions_TransactionTypeID_Application_TransactionTypes
+SupplierTransactions }o--|| PaymentMethods : FK_Purchasing_SupplierTransactions_PaymentMethodID_Application_PaymentMethods
+SupplierTransactions }o--|| Suppliers : FK_Purchasing_SupplierTransactions_SupplierID_Purchasing_Suppliers
+SupplierTransactions }o--|| PurchaseOrders : FK_Purchasing_SupplierTransactions_PurchaseOrderID_Purchasing_PurchaseOrders
+SupplierTransactions }o--|| People : FK_Purchasing_SupplierTransactions_Application_People
+SystemParameters }o--|| People : FK_Application_SystemParameters_Application_People
+SystemParameters }o--|| Cities : FK_Application_SystemParameters_DeliveryCityID_Application_Cities
+SystemParameters }o--|| Cities : FK_Application_SystemParameters_PostalCityID_Application_Cities
+TransactionTypes }o--|| People : FK_Application_TransactionTypes_Application_People
+@enduml
