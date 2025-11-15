@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sales Analytics Agent</title>
+  <title>PepsiCoPilot Sales Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -51,7 +51,9 @@
     .page {
       position: relative;
       z-index: 1;
-      padding: 40px clamp(16px, 4vw, 72px) 80px;
+      width: min(1240px, calc(100% - 48px));
+      margin: 0 auto;
+      padding: 40px 24px 80px;
     }
     .hero {
       border-radius: 32px;
@@ -380,6 +382,163 @@
       color: #fecaca;
       font-size: 14px;
     }
+    .customer-audio-card { margin-top: 40px; }
+    .customer-audio-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .customer-audio-header h3 {
+      margin: 0;
+      font-size: 26px;
+    }
+    .customer-input-row {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .customer-status {
+      margin-top: 14px;
+      border-radius: 16px;
+      padding: 14px 16px;
+      background: rgba(59,130,246,0.08);
+      border: 1px solid rgba(59,130,246,0.25);
+      color: #bfdbfe;
+      font-size: 14px;
+    }
+    .customer-status.error {
+      background: rgba(239,68,68,0.12);
+      border-color: rgba(248,113,113,0.35);
+      color: #fecaca;
+    }
+    .customer-insight-body {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .customer-identity {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .customer-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .customer-metric {
+      border-radius: 20px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      padding: 16px;
+    }
+    .customer-metric strong { font-size: 24px; font-weight: 600; }
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 11px;
+      color: rgba(148,163,184,0.9);
+      margin: 0 0 6px;
+    }
+    .customer-muted { color: rgba(226,232,240,0.75); margin: 0; }
+    .customer-visuals {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 18px;
+    }
+    .customer-chart-card,
+    .customer-top-products-card {
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(6,11,25,0.7);
+      padding: 16px;
+      min-height: 220px;
+    }
+    .mini-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(226,232,240,0.75);
+      margin-bottom: 10px;
+    }
+    .empty-state {
+      font-size: 14px;
+      color: rgba(148,163,184,0.85);
+      text-align: center;
+      padding: 30px 10px;
+      border-radius: 16px;
+      border: 1px dashed rgba(148,163,184,0.3);
+    }
+    .customer-top-products-card ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .customer-top-products-card li {
+      border-radius: 16px;
+      padding: 12px;
+      background: rgba(15,23,42,0.7);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .customer-top-products-card li strong { display: block; font-size: 15px; }
+    .customer-top-products-card li span { color: rgba(148,163,184,0.85); font-size: 13px; }
+    .customer-narrative {
+      border-radius: 18px;
+      padding: 18px;
+      background: rgba(59,130,246,0.1);
+      border: 1px solid rgba(59,130,246,0.25);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .customer-highlight-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .customer-highlight-list li {
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      gap: 10px;
+      font-size: 14px;
+      color: rgba(229,231,235,0.9);
+    }
+    .customer-highlight-list i {
+      color: #fcd34d;
+      margin-top: 2px;
+    }
+    .customer-json-panel summary {
+      cursor: pointer;
+      color: rgba(191,219,254,0.9);
+      font-size: 14px;
+    }
+    .json-viewer {
+      margin-top: 10px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(15,23,42,0.75);
+      border: 1px solid rgba(255,255,255,0.05);
+      max-height: 240px;
+      overflow: auto;
+      font-family: 'SFMono-Regular', Consolas, monospace;
+      font-size: 13px;
+      color: #cbd5f5;
+    }
+    .voice-btn { display:flex; align-items:center; gap:10px; }
     @media (max-width: 640px) {
       .page { padding: 24px 16px 60px; }
       .card, .map-section { padding: 20px; }
@@ -390,9 +549,9 @@
   <div class="page">
     <header class="hero">
       <div class="hero-content">
-        <div class="hero-icon"><i class="fas fa-chart-line"></i></div>
+        <img src="/agent_outputs/Pepsico-logo-footer.png" alt="PepsiCo" style="height:72px; margin-bottom:12px;">
         <h1>Sales Analytics Agent</h1>
-        <p>Intelligent real-time analysis of revenue, margins, and ROI</p>
+        <p>PepsiCo insights assistant powering revenue, margin, and ROI decisions</p>
       </div>
     </header>
 
@@ -521,6 +680,70 @@
       </div>
     </section>
 
+    <section class="card customer-audio-card">
+      <div class="customer-audio-header">
+        <div>
+          <h3>Audio LLM · Customer Spotlight</h3>
+          <p style="margin:6px 0 0; color:rgba(226,232,240,0.78);">
+            Speak or type a customer name to pull their KPIs, visualize history, and hear LLM commentary.
+          </p>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <button id="customerVoiceBtn" class="btn-secondary voice-btn"><i class="fas fa-wave-square"></i> Speak Name</button>
+          <button id="customerAnalyzeBtn" class="btn-primary"><i class="fas fa-chart-line"></i> Analyze Customer</button>
+        </div>
+      </div>
+      <div class="customer-input-row">
+        <label for="customerNameInput">Customer Name</label>
+        <input type="text" id="customerNameInput" placeholder="e.g. Tailspin Toys (Head Office)" />
+      </div>
+      <div id="customerInsightStatus" class="customer-status">Say or enter a customer to analyze.</div>
+      <div id="customerInsightBody" class="customer-insight-body" style="display:none;">
+        <div class="customer-identity">
+          <div>
+            <p class="eyebrow">Customer</p>
+            <h4 id="customerInsightTitle" style="margin:0;">--</h4>
+            <p id="customerInsightMeta" class="customer-muted">--</p>
+          </div>
+          <div>
+            <p class="eyebrow">Category</p>
+            <p id="customerInsightCategory" class="customer-muted">--</p>
+          </div>
+        </div>
+        <div class="customer-metrics-grid">
+          <div class="customer-metric">
+            <p class="eyebrow">Revenue</p>
+            <strong id="customerRevenueMetric">--</strong>
+          </div>
+          <div class="customer-metric">
+            <p class="eyebrow">Profit</p>
+            <strong id="customerProfitMetric">--</strong>
+          </div>
+          <div class="customer-metric">
+            <p class="eyebrow">Invoices</p>
+            <strong id="customerInvoiceMetric">--</strong>
+          </div>
+        </div>
+        <div class="customer-visuals">
+          <div class="customer-chart-card">
+            <div class="mini-title">Monthly Revenue & Profit</div>
+            <div id="customerInsightChartEmpty" class="empty-state">Load a customer to see performance history.</div>
+            <div id="customerInsightChart" class="interactive-chart" style="display:none;"></div>
+          </div>
+          <div class="customer-top-products-card">
+            <div class="mini-title">Top Products</div>
+            <ul id="customerTopProductsList"><li>Load a customer to see their product mix.</li></ul>
+          </div>
+        </div>
+        <div class="customer-narrative" id="customerInsightNarrative"></div>
+        <ul class="customer-highlight-list" id="customerInsightHighlights" style="display:none;"></ul>
+        <details class="customer-json-panel">
+          <summary>Data Snapshot</summary>
+          <pre id="customerInsightJson" class="json-viewer">{}</pre>
+        </details>
+      </div>
+    </section>
+
     <section class="map-section">
       <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; margin-bottom:18px;">
         <div>
@@ -598,6 +821,24 @@
     const audioStatusEl = document.getElementById('audioStatus');
     const audioTranscriptsEl = document.getElementById('audioTranscripts');
     const assistantAudioEl = document.getElementById('assistantAudio');
+    const customerNameInput = document.getElementById('customerNameInput');
+    const customerVoiceBtn = document.getElementById('customerVoiceBtn');
+    const customerAnalyzeBtn = document.getElementById('customerAnalyzeBtn');
+    const customerInsightStatus = document.getElementById('customerInsightStatus');
+    const customerInsightBody = document.getElementById('customerInsightBody');
+    const customerInsightTitle = document.getElementById('customerInsightTitle');
+    const customerInsightMeta = document.getElementById('customerInsightMeta');
+    const customerInsightCategory = document.getElementById('customerInsightCategory');
+    const customerRevenueMetricEl = document.getElementById('customerRevenueMetric');
+    const customerProfitMetricEl = document.getElementById('customerProfitMetric');
+    const customerInvoiceMetricEl = document.getElementById('customerInvoiceMetric');
+    const customerInsightChartEl = document.getElementById('customerInsightChart');
+    const customerInsightChartEmpty = document.getElementById('customerInsightChartEmpty');
+    const customerTopProductsList = document.getElementById('customerTopProductsList');
+    const customerInsightNarrative = document.getElementById('customerInsightNarrative');
+    const customerInsightHighlights = document.getElementById('customerInsightHighlights');
+    const customerInsightJson = document.getElementById('customerInsightJson');
+    const customerAnalyzeDefaultLabel = customerAnalyzeBtn ? customerAnalyzeBtn.innerHTML : '';
 
     const insightStore = {};
     let forecastInitialized = false;
@@ -605,6 +846,182 @@
     let audioPeer = null;
     let audioStream = null;
     let audioTranscriptBuffer = '';
+    let customerInsightLoading = false;
+    const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    const numberFormatter = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+
+    function formatCurrency(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '--';
+      return currencyFormatter.format(num);
+    }
+
+    function formatNumber(value) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return '--';
+      return numberFormatter.format(num);
+    }
+
+    function setCustomerStatus(message, isError = false) {
+      if (!customerInsightStatus) return;
+      customerInsightStatus.textContent = message;
+      customerInsightStatus.classList.toggle('error', !!isError);
+    }
+
+    function renderCustomerChart(monthly = []) {
+      if (!customerInsightChartEl) return;
+      if (!monthly.length) {
+        customerInsightChartEl.style.display = 'none';
+        if (customerInsightChartEmpty) customerInsightChartEmpty.style.display = 'flex';
+        customerInsightChartEl.innerHTML = '';
+        return;
+      }
+      const x = monthly.map(row => row.month);
+      const revenue = monthly.map(row => Number(row.revenue || 0));
+      const profit = monthly.map(row => Number(row.profit || 0));
+      const traces = [
+        { x, y: revenue, name: 'Revenue', type: 'scatter', mode: 'lines+markers', line: { color: '#8b5cf6', width: 3 } },
+        { x, y: profit, name: 'Profit', type: 'scatter', mode: 'lines+markers', line: { color: '#22d3ee', width: 3, dash: 'dot' } }
+      ];
+      Plotly.newPlot(customerInsightChartEl, traces, {
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#e2e8f0' },
+        margin: { l: 50, r: 20, t: 20, b: 40 },
+        hovermode: 'x unified',
+        height: 260
+      }, { displayModeBar: false, responsive: true });
+      customerInsightChartEl.style.display = 'block';
+      if (customerInsightChartEmpty) customerInsightChartEmpty.style.display = 'none';
+    }
+
+    function renderCustomerTopProducts(products = []) {
+      if (!customerTopProductsList) return;
+      if (!products.length) {
+        customerTopProductsList.innerHTML = '<li>No product sales found in this range.</li>';
+        return;
+      }
+      customerTopProductsList.innerHTML = products.map(p => `
+        <li>
+          <strong>${p.name}</strong>
+          <span>${formatCurrency(p.revenue)} · ${formatNumber(p.units)} units · Profit ${formatCurrency(p.profit)}</span>
+        </li>
+      `).join('');
+    }
+
+    function updateCustomerJson(payload) {
+      if (!customerInsightJson) return;
+      customerInsightJson.textContent = JSON.stringify({
+        customer: payload.customer,
+        metrics: payload.metrics,
+        monthly: payload.monthly,
+        top_products: payload.top_products
+      }, null, 2);
+    }
+
+    function renderCustomerInsight(payload) {
+      if (!payload) return;
+      const customer = payload.customer || {};
+      const metrics = payload.metrics || {};
+      if (customerInsightBody) customerInsightBody.style.display = 'flex';
+      if (customerInsightTitle) customerInsightTitle.textContent = customer.name || 'Unnamed Customer';
+      const locationBits = [];
+      if (customer.location?.city) locationBits.push(customer.location.city);
+      if (customer.location?.state) locationBits.push(customer.location.state);
+      if (customer.location?.country) locationBits.push(customer.location.country);
+      if (customerInsightMeta) customerInsightMeta.textContent = locationBits.length ? locationBits.join(', ') : 'Location unavailable';
+      if (customerInsightCategory) customerInsightCategory.textContent = customer.category || 'Uncategorized';
+      if (customerRevenueMetricEl) customerRevenueMetricEl.textContent = formatCurrency(metrics.revenue);
+      if (customerProfitMetricEl) customerProfitMetricEl.textContent = formatCurrency(metrics.profit);
+      const invoiceCount = metrics.invoices ?? metrics.orders ?? metrics.order_count;
+      if (customerInvoiceMetricEl) customerInvoiceMetricEl.textContent = formatNumber(invoiceCount);
+      if (customerInsightNarrative) customerInsightNarrative.textContent = payload.insight || 'No LLM narrative available.';
+
+      if (customerInsightHighlights) {
+        if (payload.highlights && payload.highlights.length) {
+          customerInsightHighlights.innerHTML = payload.highlights.map(h => `<li><i class="fas fa-star"></i><span>${h}</span></li>`).join('');
+          customerInsightHighlights.style.display = 'grid';
+        } else {
+          customerInsightHighlights.style.display = 'none';
+        }
+      }
+
+      renderCustomerChart(payload.monthly || []);
+      renderCustomerTopProducts(payload.top_products || []);
+      updateCustomerJson(payload);
+    }
+
+    async function loadCustomerInsight(nameOverride) {
+      if (!customerNameInput || customerInsightLoading) return;
+      const resolvedName = (nameOverride || customerNameInput.value || '').trim();
+      if (!resolvedName) {
+        setCustomerStatus('Provide a customer name first.', true);
+        return;
+      }
+      customerNameInput.value = resolvedName;
+      customerInsightLoading = true;
+      setCustomerStatus('Contacting the PepsiCoPilot insight agent...', false);
+      if (customerAnalyzeBtn) {
+        customerAnalyzeBtn.disabled = true;
+        customerAnalyzeBtn.innerHTML = '<span class="spinner"></span>Analyzing...';
+      }
+      try {
+        const payload = {
+          customer_name: resolvedName,
+          start_date: startDateEl?.value || '2015-01-01',
+          end_date: endDateEl?.value || '2016-12-31'
+        };
+        const response = await fetch('/api/customer-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          const errPayload = await response.json().catch(() => ({}));
+          throw new Error(errPayload.detail || `Unable to fetch insight (HTTP ${response.status})`);
+        }
+        const data = await response.json();
+        renderCustomerInsight(data);
+        setCustomerStatus(`Insights refreshed for ${data?.customer?.name || resolvedName}.`, false);
+      } catch (err) {
+        setCustomerStatus(err.message || 'Unable to load customer insight.', true);
+        if (customerInsightBody) customerInsightBody.style.display = 'none';
+      } finally {
+        customerInsightLoading = false;
+        if (customerAnalyzeBtn) {
+          customerAnalyzeBtn.disabled = false;
+          customerAnalyzeBtn.innerHTML = customerAnalyzeDefaultLabel || '<i class="fas fa-chart-line"></i> Analyze Customer';
+        }
+      }
+    }
+
+    function captureCustomerName() {
+      if (!customerNameInput) return;
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setCustomerStatus('Speech recognition is not supported in this browser. Please type the customer name.', true);
+        return;
+      }
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.start();
+      setCustomerStatus('Listening for a customer name...', false);
+      recognition.onresult = event => {
+        const transcript = event.results?.[0]?.[0]?.transcript?.trim();
+        if (transcript) {
+          customerNameInput.value = transcript;
+          setCustomerStatus(`Heard “${transcript}”. Generating insights...`, false);
+          loadCustomerInsight(transcript);
+        } else {
+          setCustomerStatus('Could not capture the customer name. Please try again.', true);
+        }
+      };
+      recognition.onerror = evt => {
+        setCustomerStatus(`Audio capture error: ${evt.error || 'unknown'}`, true);
+      };
+    }
 
     const quickInsights = [
       {
@@ -1084,6 +1501,7 @@
         const tokenPayload = await tokenRes.json();
         const clientSecret = tokenPayload?.client_secret?.value || tokenPayload?.client_secret;
         const model = tokenPayload?.model || 'gpt-4o-realtime-preview';
+        const kickoffPrompt = tokenPayload?.pepsico_kickoff || '';
         if (!clientSecret) throw new Error('Missing client secret');
 
         if (audioStatusEl) audioStatusEl.textContent = 'Initializing microphone...';
@@ -1102,6 +1520,20 @@
         };
 
         const dataChannel = pc.createDataChannel('oai-events');
+        dataChannel.onopen = () => {
+          if (kickoffPrompt) {
+            try {
+              dataChannel.send(JSON.stringify({
+                type: 'response.create',
+                response: {
+                  instructions: kickoffPrompt
+                }
+              }));
+            } catch (err) {
+              console.warn('Unable to send kickoff prompt', err);
+            }
+          }
+        };
         dataChannel.onmessage = event => {
           if (!audioTranscriptsEl || !event.data) return;
           try {
@@ -1178,6 +1610,21 @@
           initAudioSession();
         }
       });
+    }
+
+    if (customerAnalyzeBtn) {
+      customerAnalyzeBtn.addEventListener('click', () => loadCustomerInsight());
+    }
+    if (customerNameInput) {
+      customerNameInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          loadCustomerInsight();
+        }
+      });
+    }
+    if (customerVoiceBtn) {
+      customerVoiceBtn.addEventListener('click', captureCustomerName);
     }
   </script>
 </body>

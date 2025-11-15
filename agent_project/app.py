@@ -4,16 +4,20 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 import os
-from datetime import datetime
+from datetime import datetime, date
+import re
+from numbers import Number
 import json
 import urllib.request
 import urllib.error
 from analytics import (
     compute_roi, plot_timeseries, plot_bar_chart,
     top_customers, top_products, salesperson_performance, customer_segmentation,
-    sales_by_location, forecast_product_demand
+    sales_by_location, forecast_product_demand,
+    find_products_by_name, find_customer_by_name, customer_metrics,
+    customer_monthly_sales, customer_top_products
 )
-from agent import summarize_dataframe, forecast_with_llm
+from agent import summarize_dataframe, forecast_with_llm, customer_insight_with_llm
 import pandas as pd
 
 app = FastAPI(title='Sales Agent')
@@ -34,6 +38,47 @@ class AskRequest(BaseModel):
 class AudioSessionRequest(BaseModel):
     start_date: Optional[str] = '2015-01-01'
     end_date: Optional[str] = '2016-12-31'
+
+
+class CustomerIntentRequest(BaseModel):
+    customer_name: str
+    start_date: Optional[str] = '2015-01-01'
+    end_date: Optional[str] = '2016-12-31'
+
+
+def to_serializable(value):
+    if value is None:
+        return None
+    if isinstance(value, (pd.Timestamp, datetime, date)):
+        return value.isoformat()
+    if hasattr(value, 'item'):
+        value = value.item()
+    if isinstance(value, Number):
+        try:
+            float_val = float(value)
+        except Exception:
+            return value
+        return int(float_val) if float_val.is_integer() else float_val
+    return value
+
+
+def build_customer_name_variants(name: str) -> list[str]:
+    """Return variations attempting to enforce the Customer-X-X-X format."""
+    variants = []
+
+    def push(val):
+        if val and val not in variants:
+            variants.append(val)
+
+    cleaned = (name or '').strip()
+    push(cleaned)
+    tokens = [tok for tok in re.split(r'[^A-Za-z0-9]+', cleaned) if tok]
+    if tokens:
+        title_tokens = [tok.title() for tok in tokens]
+        slug = "Customer-" + "-".join(title_tokens)
+        push(slug)
+        push(slug.upper())
+    return variants
 
 
 def build_context_summary(start_date: str, end_date: str) -> str:
@@ -80,12 +125,19 @@ def create_audio_session(body: AudioSessionRequest = Body(None)):
     start = body.start_date if body and body.start_date else '2015-01-01'
     end = body.end_date if body and body.end_date else '2016-12-31'
     context_summary = build_context_summary(start, end)
+    kickoff_prompt = (
+        "PepsiCoPilot here. Share two punchy insights with numbers from this data: "
+        f"{context_summary}. Invite the user to ask follow-ups."
+    )
     payload = {
-        'model': os.getenv('OPENAI_REALTIME_MODEL', 'gpt-4o-realtime-preview'),
+        'model': os.getenv('OPENAI_REALTIME_MODEL', 'gpt-4o-realtime-preview-2024-12-17'),
         'voice': os.getenv('OPENAI_REALTIME_VOICE', 'verse'),
         'instructions': (
-            "You are a live voice sales analyst. Use the context below to answer with concrete numbers in under 60 words.\n"
-            f"{context_summary}"
+            "You are PepsiCoPilot, an energetic conversational sales analyst for PepsiCo leadership. "
+            "Always speak clearly, cite concrete numbers, and keep responses under 80 words unless the user requests detail. "
+            "Lead with 2-3 'smart' insights referencing ROI, growth trends, top customers, or risk signals from the context summary. "
+            "If the user asks for next steps, recommend specific actions.\n"
+            f"Context summary:\n{context_summary}"
         )
     }
     data = json.dumps(payload).encode('utf-8')
@@ -108,7 +160,10 @@ def create_audio_session(body: AudioSessionRequest = Body(None)):
         raise HTTPException(status_code=500, detail=str(exc))
     if status >= 400:
         raise HTTPException(status_code=status, detail=resp_body.decode('utf-8', errors='ignore'))
-    return JSONResponse(json.loads(resp_body.decode('utf-8')))
+    session_payload = json.loads(resp_body.decode('utf-8'))
+    session_payload['pepsico_context'] = context_summary
+    session_payload['pepsico_kickoff'] = kickoff_prompt
+    return JSONResponse(session_payload)
 
 
 def describe_forecast_rows(rows):
@@ -369,6 +424,91 @@ def api_demand_forecast(stock_item_id: Optional[int] = None,
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.post('/customer-intent')
+async def api_customer_intent(req: CustomerIntentRequest):
+    customer_name = (req.customer_name or '').strip()
+    if not customer_name:
+        raise HTTPException(status_code=400, detail="customer_name is required")
+
+    try:
+        matches = pd.DataFrame()
+        tried_variants = build_customer_name_variants(customer_name)
+        for variant in tried_variants:
+            matches = find_customer_by_name(variant, limit=5)
+            if not matches.empty:
+                customer_name = variant
+                break
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Lookup failed: {exc}")
+
+    if matches.empty:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    lower_name = customer_name.lower()
+    exact_rows = matches[matches['CustomerName'].str.lower() == lower_name]
+    row = exact_rows.iloc[0] if not exact_rows.empty else matches.iloc[0]
+
+    customer_id = int(row.CustomerID)
+    metrics_raw = customer_metrics(customer_id, req.start_date, req.end_date)
+    if not metrics_raw:
+        raise HTTPException(status_code=404, detail="No sales data in the selected range for this customer")
+    metrics = {k: to_serializable(v) for k, v in metrics_raw.items()}
+
+    def safe_field(value):
+        return None if pd.isna(value) else value
+
+    monthly_df = customer_monthly_sales(customer_id, req.start_date, req.end_date)
+    monthly_records = []
+    for _, r in monthly_df.iterrows():
+        month_value = r['month']
+        if hasattr(month_value, 'isoformat'):
+            month_value = month_value.isoformat()
+        monthly_records.append({
+            'month': month_value,
+            'revenue': float(r['revenue']) if pd.notna(r['revenue']) else 0.0,
+            'profit': float(r['profit']) if pd.notna(r['profit']) else 0.0
+        })
+
+    top_df = customer_top_products(customer_id, req.start_date, req.end_date, limit=5)
+    top_records = []
+    for _, r in top_df.iterrows():
+        top_records.append({
+            'name': r['StockItemName'],
+            'units': float(r['total_units']) if pd.notna(r['total_units']) else 0.0,
+            'revenue': float(r['revenue']) if pd.notna(r['revenue']) else 0.0,
+            'profit': float(r['profit']) if pd.notna(r['profit']) else 0.0
+        })
+
+    customer_payload = {
+        'id': customer_id,
+        'name': safe_field(row.CustomerName) or customer_name,
+        'category': safe_field(row.CustomerCategoryName),
+        'phone': safe_field(row.PhoneNumber),
+        'website': safe_field(row.WebsiteURL),
+        'credit_limit': to_serializable(row.CreditLimit if not pd.isna(row.CreditLimit) else None),
+        'location': {
+            'city': safe_field(row.CityName),
+            'state': safe_field(row.StateProvinceName),
+            'country': safe_field(row.CountryName)
+        }
+    }
+
+    try:
+        narrative = customer_insight_with_llm(customer_payload['name'], metrics, monthly_records, top_records)
+    except Exception:
+        narrative = {'insight': 'Unable to generate AI analysis at this time.', 'highlights': []}
+
+    response = {
+        'customer': customer_payload,
+        'metrics': metrics,
+        'monthly': monthly_records,
+        'top_products': top_records,
+        'insight': narrative.get('insight'),
+        'highlights': narrative.get('highlights', [])
+    }
+    return JSONResponse(response)
 
 
 @app.get('/')

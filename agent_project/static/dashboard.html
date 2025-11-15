@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Analytics Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            margin-bottom: 30px;
+            font-size: 32px;
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        input, select, button {
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        input:focus, select:focus, button:focus {
+            outline: none;
+            background: rgba(255,255,255,0.12);
+        }
+        button {
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            color: #fff;
+            border: none;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(129, 140, 248, 0.3);
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+        .card:hover {
+            background: rgba(255,255,255,0.06);
+            border-color: rgba(255,255,255,0.15);
+        }
+        .card h3 {
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #c084fc;
+        }
+        .chart {
+            width: 100%;
+            height: 400px;
+            position: relative;
+            min-height: 400px;
+        }
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 8px;
+            z-index: 10;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #818cf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .metric {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: rgba(226,232,240,0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 8px;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Sales Analytics Dashboard</h1>
+        
+        <div class="controls">
+            <label>Start Date:</label>
+            <input type="date" id="startDate" value="2015-01-01">
+            <label>End Date:</label>
+            <input type="date" id="endDate" value="2016-12-31">
+            <button onclick="loadAllCharts()">🔄 Refresh All</button>
+        </div>
+
+        <div class="card">
+            <h3>📈 ROI Analysis</h3>
+            <div class="metrics" id="roiMetrics">
+                <div class="metric">
+                    <div class="metric-label">Gross Margin</div>
+                    <div class="metric-value" id="grossMarginMetric">--</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-label">ROI Trend</div>
+                    <div class="metric-value" id="roiTrendMetric">--</div>
+                </div>
+            </div>
+            <div class="loading" id="roiLoading"><div class="spinner"></div></div>
+            <div class="chart" id="roiChart"></div>
+            <div class="error" id="roiError" style="display:none;"></div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>👥 Top Customers</h3>
+                <div class="loading" id="customersLoading"><div class="spinner"></div></div>
+                <div class="chart" id="customersChart"></div>
+                <div class="error" id="customersError" style="display:none;"></div>
+            </div>
+
+            <div class="card">
+                <h3>📦 Top Products</h3>
+                <div class="loading" id="productsLoading"><div class="spinner"></div></div>
+                <div class="chart" id="productsChart"></div>
+                <div class="error" id="productsError" style="display:none;"></div>
+            </div>
+
+            <div class="card">
+                <h3>👨‍💼 Salesperson Performance</h3>
+                <div class="loading" id="salespeoplLoading"><div class="spinner"></div></div>
+                <div class="chart" id="salespeoplChart"></div>
+                <div class="error" id="salespeoplError" style="display:none;"></div>
+            </div>
+
+            <div class="card">
+                <h3>🎯 Customer Segmentation</h3>
+                <div class="loading" id="segmentLoading"><div class="spinner"></div></div>
+                <div class="chart" id="segmentChart"></div>
+                <div class="error" id="segmentError" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('Dashboard script loaded');
+
+        async function fetchWithError(url, errorElementId) {
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            } catch (err) {
+                console.error(`Error fetching ${url}:`, err);
+                const errorEl = document.getElementById(errorElementId);
+                if (errorEl) {
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = `Error: ${err.message}`;
+                }
+                throw err;
+            }
+        }
+
+        async function loadRoiChart() {
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+            const loadingEl = document.getElementById('roiLoading');
+            const chartEl = document.getElementById('roiChart');
+            const errorEl = document.getElementById('roiError');
+
+            loadingEl.style.display = 'flex';
+            errorEl.style.display = 'none';
+            chartEl.innerHTML = '';
+
+            try {
+                const data = await fetchWithError(`/api/roi-data?start_date=${start}&end_date=${end}`, 'roiError');
+                
+                if (!data.data || data.data.length === 0) {
+                    chartEl.innerHTML = '<p style="text-align:center;padding:20px;">No data available</p>';
+                    return;
+                }
+
+                const rows = data.data;
+                const months = rows.map(r => new Date(r.month).toISOString().slice(0, 10));
+                
+                const traces = [
+                    { name: 'Revenue', x: months, y: rows.map(r => r.revenue), mode: 'lines+markers', line: { color: '#818cf8', width: 3 }, marker: { size: 6 } },
+                    { name: 'COGS', x: months, y: rows.map(r => r.cogs), mode: 'lines+markers', line: { color: '#fb7185', width: 3 }, marker: { size: 6 } },
+                    { name: 'Gross Margin', x: months, y: rows.map(r => r.gross_margin), mode: 'lines+markers', line: { color: '#2dd4bf', width: 3 }, marker: { size: 6 } }
+                ];
+
+                Plotly.newPlot(chartEl, traces, {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    margin: { l: 50, r: 20, t: 10, b: 50 },
+                    legend: { orientation: 'h', y: -0.2 },
+                    xaxis: { title: 'Month', gridcolor: 'rgba(255,255,255,0.05)' },
+                    yaxis: { title: 'Amount ($)', gridcolor: 'rgba(255,255,255,0.05)' },
+                    font: { color: '#e5e7eb' }
+                }, { displayModeBar: false, responsive: true });
+
+                if (data.summary) {
+                    document.getElementById('grossMarginMetric').textContent = data.summary.gross_margin_pct?.toFixed(1) + '%' || '--';
+                    const trend = data.summary.roi_trend_pct || 0;
+                    document.getElementById('roiTrendMetric').textContent = (trend >= 0 ? '+' : '') + trend.toFixed(1) + '%';
+                }
+            } catch (err) {
+                console.error('loadRoiChart error:', err);
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        async function loadTopCustomers() {
+            const loadingEl = document.getElementById('customersLoading');
+            const chartEl = document.getElementById('customersChart');
+            const errorEl = document.getElementById('customersError');
+
+            loadingEl.style.display = 'flex';
+            errorEl.style.display = 'none';
+            chartEl.innerHTML = '';
+
+            try {
+                const data = await fetchWithError(`/api/top-customers?start_date=${document.getElementById('startDate').value}&end_date=${document.getElementById('endDate').value}`, 'customersError');
+                
+                if (!data.data || data.data.length === 0) {
+                    chartEl.innerHTML = '<p style="text-align:center;padding:20px;">No data available</p>';
+                    return;
+                }
+
+                const items = data.data.slice(0, 10);
+                const trace = {
+                    x: items.map(i => i.total_revenue),
+                    y: items.map(i => i.CustomerName),
+                    type: 'bar',
+                    orientation: 'h',
+                    marker: { color: '#818cf8' }
+                };
+
+                Plotly.newPlot(chartEl, [trace], {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    margin: { l: 150, r: 20, t: 10, b: 50 },
+                    xaxis: { title: 'Revenue ($)' },
+                    font: { color: '#e5e7eb' }
+                }, { displayModeBar: false, responsive: true });
+            } catch (err) {
+                console.error('loadTopCustomers error:', err);
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        async function loadTopProducts() {
+            const loadingEl = document.getElementById('productsLoading');
+            const chartEl = document.getElementById('productsChart');
+            const errorEl = document.getElementById('productsError');
+
+            loadingEl.style.display = 'flex';
+            errorEl.style.display = 'none';
+            chartEl.innerHTML = '';
+
+            try {
+                const data = await fetchWithError(`/api/top-products?start_date=${document.getElementById('startDate').value}&end_date=${document.getElementById('endDate').value}`, 'productsError');
+                
+                if (!data.data || data.data.length === 0) {
+                    chartEl.innerHTML = '<p style="text-align:center;padding:20px;">No data available</p>';
+                    return;
+                }
+
+                const items = data.data.slice(0, 10);
+                const trace = {
+                    x: items.map(i => i.total_units),
+                    y: items.map(i => i.StockItemName),
+                    type: 'bar',
+                    orientation: 'h',
+                    marker: { color: '#2dd4bf' }
+                };
+
+                Plotly.newPlot(chartEl, [trace], {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    margin: { l: 150, r: 20, t: 10, b: 50 },
+                    xaxis: { title: 'Units Sold' },
+                    font: { color: '#e5e7eb' }
+                }, { displayModeBar: false, responsive: true });
+            } catch (err) {
+                console.error('loadTopProducts error:', err);
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        async function loadSalespeoplPerformance() {
+            const loadingEl = document.getElementById('salespeoplLoading');
+            const chartEl = document.getElementById('salespeoplChart');
+            const errorEl = document.getElementById('salespeoplError');
+
+            loadingEl.style.display = 'flex';
+            errorEl.style.display = 'none';
+            chartEl.innerHTML = '';
+
+            try {
+                const data = await fetchWithError(`/api/salesperson-performance?start_date=${document.getElementById('startDate').value}&end_date=${document.getElementById('endDate').value}`, 'salespeoplError');
+                
+                if (!data.data || data.data.length === 0) {
+                    chartEl.innerHTML = '<p style="text-align:center;padding:20px;">No data available</p>';
+                    return;
+                }
+
+                const items = data.data.slice(0, 10);
+                const trace = {
+                    x: items.map(i => i.total_revenue),
+                    y: items.map(i => i.salesperson),
+                    type: 'bar',
+                    orientation: 'h',
+                    marker: { color: '#c084fc' }
+                };
+
+                Plotly.newPlot(chartEl, [trace], {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    margin: { l: 150, r: 20, t: 10, b: 50 },
+                    xaxis: { title: 'Revenue ($)' },
+                    font: { color: '#e5e7eb' }
+                }, { displayModeBar: false, responsive: true });
+            } catch (err) {
+                console.error('loadSalespeoplPerformance error:', err);
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        async function loadSegmentation() {
+            const loadingEl = document.getElementById('segmentLoading');
+            const chartEl = document.getElementById('segmentChart');
+            const errorEl = document.getElementById('segmentError');
+
+            loadingEl.style.display = 'flex';
+            errorEl.style.display = 'none';
+            chartEl.innerHTML = '';
+
+            try {
+                const data = await fetchWithError(`/api/customer-segmentation?start_date=${document.getElementById('startDate').value}&end_date=${document.getElementById('endDate').value}`, 'segmentError');
+                
+                if (!data.data || data.data.length === 0) {
+                    chartEl.innerHTML = '<p style="text-align:center;padding:20px;">No data available</p>';
+                    return;
+                }
+
+                const segments = {};
+                data.data.forEach(item => {
+                    segments[item.segment] = (segments[item.segment] || 0) + 1;
+                });
+
+                const trace = {
+                    labels: Object.keys(segments),
+                    values: Object.values(segments),
+                    type: 'pie',
+                    marker: { colors: ['#818cf8', '#c084fc', '#2dd4bf', '#fb7185'] }
+                };
+
+                Plotly.newPlot(chartEl, [trace], {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: '#e5e7eb' }
+                }, { displayModeBar: false, responsive: true });
+            } catch (err) {
+                console.error('loadSegmentation error:', err);
+            } finally {
+                loadingEl.style.display = 'none';
+            }
+        }
+
+        async function loadAllCharts() {
+            console.log('Loading all charts...');
+            await Promise.all([
+                loadRoiChart(),
+                loadTopCustomers(),
+                loadTopProducts(),
+                loadSalespeoplPerformance(),
+                loadSegmentation()
+            ]);
+            console.log('All charts loaded');
+        }
+
+        window.addEventListener('load', () => {
+            console.log('Page fully loaded, starting chart loads...');
+            loadAllCharts();
+        });
+    </script>
+</body>
+</html>

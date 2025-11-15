@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import pandas as pd
 import pyodbc
 import plotly.express as px
@@ -333,3 +334,96 @@ def forecast_product_demand(stock_item_id: int = None, start_date: str = '2015-0
         'end_date': end_date,
         'explanation': 'Baseline linear trend forecast blended with recent performance.'
     }
+
+
+def find_products_by_name(term: str, limit: int = 5) -> pd.DataFrame:
+    term = term.replace("'", "''")
+    q = f"""
+    SELECT TOP {limit}
+      StockItemID,
+      StockItemName
+    FROM [Warehouse].[StockItems]
+    WHERE StockItemName LIKE '%{term}%'
+    ORDER BY StockItemName
+    """
+    return run_sql(q)
+
+
+def find_customer_by_name(term: str, limit: int = 5) -> pd.DataFrame:
+    term = term.replace("'", "''")
+    q = f"""
+    SELECT TOP {limit}
+      c.CustomerID,
+      c.CustomerName,
+      cat.CustomerCategoryName,
+      c.PrimaryContactPersonID,
+      c.PhoneNumber,
+      c.WebsiteURL,
+      c.CreditLimit,
+      city.CityName,
+      sp.StateProvinceName,
+      co.CountryName
+    FROM [Sales].[Customers] c
+    LEFT JOIN [Sales].[CustomerCategories] cat ON cat.CustomerCategoryID = c.CustomerCategoryID
+    LEFT JOIN [Application].[Cities] city ON city.CityID = c.DeliveryCityID
+    LEFT JOIN [Application].[StateProvinces] sp ON sp.StateProvinceID = city.StateProvinceID
+    LEFT JOIN [Application].[Countries] co ON co.CountryID = sp.CountryID
+    WHERE c.CustomerName LIKE '%{term}%'
+    ORDER BY CASE WHEN c.CustomerName = '{term}' THEN 0 ELSE 1 END, LEN(c.CustomerName)
+    """
+    return run_sql(q)
+
+
+def customer_metrics(customer_id: int, start_date: str, end_date: str) -> dict:
+    q = f"""
+    SELECT
+      SUM(il.ExtendedPrice) AS revenue,
+      SUM(il.LineProfit) AS profit,
+      COUNT(DISTINCT i.InvoiceID) AS invoices,
+      COUNT(DISTINCT i.OrderID) AS orders,
+      AVG(il.ExtendedPrice) AS avg_line_value,
+      MIN(i.InvoiceDate) AS first_purchase,
+      MAX(i.InvoiceDate) AS last_purchase
+    FROM [Sales].[Invoices] i
+    JOIN [Sales].[InvoiceLines] il ON il.InvoiceID = i.InvoiceID
+    WHERE i.CustomerID = {customer_id}
+      AND i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+    """
+    df = run_sql(q)
+    if df.empty:
+        return {}
+    return df.fillna(0).iloc[0].to_dict()
+
+
+def customer_monthly_sales(customer_id: int, start_date: str, end_date: str) -> pd.DataFrame:
+    q = f"""
+    SELECT
+      DATEFROMPARTS(YEAR(i.InvoiceDate), MONTH(i.InvoiceDate), 1) AS [month],
+      SUM(il.ExtendedPrice) AS revenue,
+      SUM(il.LineProfit) AS profit
+    FROM [Sales].[Invoices] i
+    JOIN [Sales].[InvoiceLines] il ON il.InvoiceID = i.InvoiceID
+    WHERE i.CustomerID = {customer_id}
+      AND i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY DATEFROMPARTS(YEAR(i.InvoiceDate), MONTH(i.InvoiceDate), 1)
+    ORDER BY [month]
+    """
+    return run_sql(q)
+
+
+def customer_top_products(customer_id: int, start_date: str, end_date: str, limit: int = 5) -> pd.DataFrame:
+    q = f"""
+    SELECT TOP {limit}
+      si.StockItemName,
+      SUM(il.Quantity) AS total_units,
+      SUM(il.ExtendedPrice) AS revenue,
+      SUM(il.LineProfit) AS profit
+    FROM [Sales].[Invoices] i
+    JOIN [Sales].[InvoiceLines] il ON il.InvoiceID = i.InvoiceID
+    JOIN [Warehouse].[StockItems] si ON si.StockItemID = il.StockItemID
+    WHERE i.CustomerID = {customer_id}
+      AND i.InvoiceDate BETWEEN '{start_date}' AND '{end_date}'
+    GROUP BY si.StockItemName
+    ORDER BY revenue DESC
+    """
+    return run_sql(q)

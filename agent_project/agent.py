@@ -186,3 +186,107 @@ Months must be consecutive calendar months immediately following the latest hist
         return {'forecast': cleaned, 'explanation': explanation}
     except Exception as exc:
         raise RuntimeError(f"LLM forecast failed: {exc}")
+
+
+def _format_currency(value) -> str:
+    if value is None:
+        return "$0"
+    try:
+        value = float(value)
+    except Exception:
+        return str(value)
+    return f"${value:,.0f}"
+
+
+def _fallback_customer_insight(customer_name: str,
+                               metrics: Dict,
+                               monthly: List[Dict],
+                               top_products: List[Dict]) -> Dict:
+    revenue = metrics.get('revenue') or 0
+    profit = metrics.get('profit') or 0
+    invoices = metrics.get('invoices') or metrics.get('orders') or 0
+    sentences = [
+        f"{customer_name} generated {_format_currency(revenue)} in revenue and {_format_currency(profit)} in profit across the selected period."
+    ]
+
+    if invoices:
+        sentences.append(f"The team processed {int(float(invoices))} invoices for this customer.")
+
+    if monthly and len(monthly) >= 2:
+        start = monthly[0]
+        end = monthly[-1]
+        start_rev = float(start.get('revenue') or 0)
+        end_rev = float(end.get('revenue') or 0)
+        if start_rev:
+            change = ((end_rev - start_rev) / start_rev) * 100
+            sentences.append(
+                f"Revenue moved from {_format_currency(start_rev)} in {start.get('month')} "
+                f"to {_format_currency(end_rev)} in {end.get('month')} ({change:+.1f}%)."
+            )
+
+    highlights = []
+    if top_products:
+        top = top_products[0]
+        highlights.append(
+            f"Top SKU {top.get('name')} contributed {_format_currency(top.get('revenue'))} "
+            f"across {int(float(top.get('units') or 0))} units"
+        )
+    if profit:
+        margin_pct = (float(profit) / revenue * 100) if revenue else None
+        if margin_pct is not None:
+            highlights.append(f"Average profit margin {margin_pct:.1f}%")
+
+    # Ensure fallback strings are concise.
+    insight_text = " ".join(sentences).strip()
+    return {'insight': insight_text, 'highlights': highlights}
+
+
+def customer_insight_with_llm(customer_name: str,
+                              metrics: Dict,
+                              monthly: List[Dict],
+                              top_products: List[Dict]) -> Dict:
+    """Ask the LLM to craft a narrative about a single customer's performance."""
+    payload = {
+        'customer_name': customer_name,
+        'metrics': metrics,
+        'monthly': monthly[-12:],
+        'top_products': top_products[:5]
+    }
+    api_key = os.getenv('OPENAI_API_KEY')
+    if HAS_OPENAI and api_key and api_key.startswith('sk-'):
+        try:
+            prompt = f"""You are a senior PepsiCo sales strategist.
+Summarize the customer's performance using the JSON data block.
+Highlight revenue, profit, trends, and product contribution.
+Return strictly JSON with:
+{{
+  "insight": "3 sentences (<=90 words) referencing concrete numbers and months.",
+  "highlights": ["short bullet with a number", "another highlight"]
+}}
+
+Data:
+{json.dumps(payload, indent=2)}
+"""
+            resp = client.chat.completions.create(
+                model=os.getenv('OPENAI_MODEL', 'gpt-4o-mini'),
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300,
+                temperature=0.2,
+                timeout=10
+            )
+            content = resp.choices[0].message.content.strip()
+            start = content.find('{')
+            end = content.rfind('}')
+            if start == -1 or end == -1:
+                raise ValueError("LLM response missing JSON block")
+            parsed = json.loads(content[start:end+1])
+            insight = parsed.get('insight', '').strip()
+            highlights = parsed.get('highlights', [])
+            if isinstance(highlights, str):
+                highlights = [highlights]
+            highlights = [h.strip() for h in highlights if h and isinstance(h, str)]
+            if insight:
+                return {'insight': insight, 'highlights': highlights}
+        except Exception:
+            pass
+    return _fallback_customer_insight(customer_name, metrics, monthly, top_products)
