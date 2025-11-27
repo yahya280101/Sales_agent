@@ -39,9 +39,4 @@ This will create `schema.dbml` and `schema.puml` in the current folder.
 python3 render_plantuml.py schema.puml -o schema.png
 ```
 
-Notes and options
-- If you prefer `dbdiagram.io`, open `schema.dbml` and paste into https://dbdiagram.io.
-- The public PlantUML server has size limits for very large schemas. For large databases, consider manually grouping tables or using a local PlantUML server or the PlantUML JAR.
-- The script uses `pyodbc`. If you have connection or driver errors, verify your ODBC driver and driver name (change `--driver` flag if needed).
 
-If you want, I can run these steps locally if you provide exported CSVs or run the commands and paste `schema.puml` back here — then I will render and return the PNG.
